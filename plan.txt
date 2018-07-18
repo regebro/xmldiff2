@@ -1,0 +1,13 @@
+1. Parse with lxml
+2. Match
+   - Check for xml:id
+   - Maybe Get ratio with difflib?
+   - For text use googles semantic differ
+   - Where to store the match? id:id map?
+3. Generate script
+   - Update
+   - Align
+   - Insert
+   - Move
+   - Delete
+4. Use script to generate a diff xml
