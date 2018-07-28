@@ -1,0 +1,26 @@
+TODO
+====
+
+First release:
+--------------
+
+* Actions should be named tuple objects, it's nicer than plain tuples.
+
+* Explicit namespace tests. Since we use lxml all the time this already works
+  as by magic, but we need to test for it.
+
+* Support for making a diffed xml with diff:<action> tags.
+
+* Support for making a pretty text diff
+
+* Command line utility
+
+* Documentation
+
+
+Future releases:
+----------------
+
+* An xmlpatch utility/command that can apply the diffs.
+
+* Support for the xmldiff diff format.

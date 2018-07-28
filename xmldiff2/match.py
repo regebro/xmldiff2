@@ -8,13 +8,11 @@ from xmldiff2 import utils
 
 class Matcher(object):
 
-    def __init__(self, T=0.5, F=0.5, uniqueattrs=None):
-        # The minimum similarity between two leaf nodes to consider them equal
+    def __init__(self, F=0.5, uniqueattrs=None):
+        # The minimum similarity between two nodes to consider them equal
         self.F = F
-        # The minimum similarity between two trees to consider them equal
-        self.T = T
         # uniquattrs is a list of attributes that uniquely identifies a node
-        # inside a document. Deafults to 'xml:id'.
+        # inside a document. Defaults to 'xml:id'.
         if uniqueattrs is None:
             uniqueattrs = ['{http://www.w3.org/XML/1998/namespace}id']
         self.uniqueattrs = uniqueattrs
@@ -31,8 +29,14 @@ class Matcher(object):
         self._r2lmap = None
         self._inorder = None
 
-    def set_seqs(self, left, right):
+    def set_trees(self, left, right):
         self.clear()
+
+        # Make sure we were passed two lxml elements:
+        if not (etree.iselement(left) and etree.iselement(right)):
+            raise TypeError("The 'left' and 'right' parameters must be "
+                            "lxml Elements.")
+
         self.left = left
         self.right = right
 
@@ -41,10 +45,9 @@ class Matcher(object):
         self._l2rmap[id(lnode)] = rnode
         self._r2lmap[id(rnode)] = lnode
 
-    def match(self):
-        if self.left is None or self.right is None:
-            raise RuntimeError("You must set the sequences to compare with "
-                               ".set_seqs(left, right) before matching.")
+    def match(self, left=None, right=None):
+        if left is not None or right is not None:
+            self.set_trees(left, right)
 
         if self._matches is not None:
             # We already matched these sequences, use the cache
@@ -127,7 +130,7 @@ class Matcher(object):
         # We use a simple ratio here, I tried Levenshtein distances
         # but that took a 100 times longer.
         self._sequencematcher.set_seqs(self.node_text(left),
-                                      self.node_text(right))
+                                       self.node_text(right))
         return self._sequencematcher.ratio()
 
     def child_ratio(self, left, right):
@@ -278,9 +281,9 @@ class Matcher(object):
                    right.getroottree().getpath(right),
                    right_pos)
 
-    def diff(self):
-        # Make sure the matching is done first:
-        self.match()
+    def diff(self, left=None, right=None):
+        # Make sure the matching is done first, diff() needs the l2r/r2l maps.
+        self.match(left, right)
 
         # The paper talks about the five phases, and then does four of them
         # in one phase, in a different order that described. Ah well.
