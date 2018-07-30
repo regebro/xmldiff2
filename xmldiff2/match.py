@@ -75,16 +75,11 @@ class Matcher(object):
                 if match > max_match:
                     match_node = rnode
                     max_match = match
-                elif match == max_match and match >= self.F:
-                    # We got two (or more) equal matches. In that case
-                    # pick the one with the same xpath, if any.
-                    if lroot.getpath(lnode) == rroot.getpath(rnode):
-                        match_node = rnode
 
                 # Try to shortcut for nodes that are not only equal but also
                 # in the same place in the tree
                 if (match == 1.0 and
-                    lroot.getpath(lnode) == rroot.getpath(rnode)):
+                   lroot.getpath(lnode) == rroot.getpath(rnode)):
                     # This is a complete match, break here
                     break
 
@@ -148,7 +143,7 @@ class Matcher(object):
                     right_children.remove(rchild)
                     break
 
-        return count/child_count
+        return count / child_count
 
     def update_node(self, left, right):
 
@@ -190,7 +185,7 @@ class Matcher(object):
         # Move: Check if any of the new attributes have the same value
         # as the removed attributes. If they do, it's actually
         # a renaming, and a move is one action instead of remove + insert
-        newattrmap = {v:k for (k, v) in right.attrib.items()
+        newattrmap = {v: k for (k, v) in right.attrib.items()
                       if k in newattrs}
         for lk in sorted(removedattrs):
             value = left.attrib[lk]
@@ -210,12 +205,12 @@ class Matcher(object):
         for key in sorted(newattrs):
             yield ('insert',
                    '%s/@%s' % (right_xpath, key),
-                    right.attrib[key])
+                   right.attrib[key])
             left.attrib[key] = right.attrib[key]
 
         # Delete: remove removed attributes
         for key in sorted(removedattrs):
-            if not key in left.attrib:
+            if key not in left.attrib:
                 # This was already moved
                 continue
             yield ('delete',
@@ -224,14 +219,10 @@ class Matcher(object):
 
     def find_pos(self, child):
         parent = child.getparent()
-        # Is child is the leftmost child of it's parents that are in order?
-        for sibling in parent.getchildren():
-            if sibling in self._inorder:
-                if sibling is child:
-                    # Yup, it's first inorder
-                    return 0
-                first_inorder = sibling
-                break
+        # The paper here first checks in the child is the first child in
+        # order, but I am entirely unable to actually make that happen, and
+        # if it does, the last part will catch that case anyway, and it also
+        # deals with the case of no child being in order.
 
         # Find the last sibling before the child that is in order
         i = parent.index(child) - 1
@@ -239,23 +230,23 @@ class Matcher(object):
             sibling = parent[i]
             if sibling in self._inorder:
                 # That's it
-                last_inorder = sibling
                 break
             i -= 1
         else:
-            # No previous sibling in order, this may be a new tree being
-            # inserted, and this would be the first child, then.
+            # No previous sibling in order.
             return 0
 
         # Now find the partner of this in the left tree
-        u = self._r2lmap[id(sibling)]
-        if u is not None:
-            return u.getparent().index(u) + 1
+        sibling_match = self._r2lmap[id(sibling)]
+        i = 0
+        for child in sibling_match.getparent().getchildren():
+            if child in self._inorder:
+                i += 1
+            if child is sibling_match:
+                break
+        return i
 
     def align_children(self, left, right):
-        # Move this definition out
-        eqfn = lambda x, y: self._l2rmap[id(x)] is y
-
         lchildren = [c for c in left.getchildren()
                      if (id(c) in self._l2rmap and
                          self._l2rmap[id(c)].getparent() is right)]
@@ -266,7 +257,10 @@ class Matcher(object):
             # Nothing to align
             return
 
-        lcs = utils.longest_common_subsequence(lchildren, rchildren, eqfn)
+        lcs = utils.longest_common_subsequence(
+            lchildren, rchildren,
+            lambda x, y: self._l2rmap[id(x)] is y)
+
         for x, y in lcs:
             # Mark these as in order
             self._inorder.add(lchildren[x])
@@ -274,12 +268,17 @@ class Matcher(object):
 
         # Go over those children that are not in order:
         for unaligned_left in set(lchildren) - self._inorder:
-            unaligned_right = self._l2rmap.get(id(unaligned_left))
+            unaligned_right = self._l2rmap[id(unaligned_left)]
             right_pos = self.find_pos(unaligned_right)
+            rtarget = unaligned_right.getparent()
+            ltarget = self._r2lmap[id(rtarget)]
             yield ('move',
                    unaligned_left.getroottree().getpath(unaligned_left),
-                   right.getroottree().getpath(right),
+                   rtarget.getroottree().getpath(rtarget),
                    right_pos)
+            # Do the actual move:
+            left.remove(unaligned_left)
+            ltarget.insert(right_pos, unaligned_left)
 
     def diff(self, left=None, right=None):
         # Make sure the matching is done first, diff() needs the l2r/r2l maps.
@@ -335,8 +334,8 @@ class Matcher(object):
                 if ltarget is not lparent:
                     pos = self.find_pos(rnode)
                     yield ('move',
-                           rtree.getpath(rnode),
-                           ltree.getpath(ltarget),
+                           ltree.getpath(lnode),
+                           rtree.getpath(rparent),
                            pos)
                     # Move the node from current parent to target
                     lparent.remove(lnode)
@@ -345,7 +344,6 @@ class Matcher(object):
             # (d) Align
             for action in self.align_children(lnode, rnode):
                 yield action
-
 
         for lnode in utils.post_order_traverse(self.left):
             if id(lnode) not in self._l2rmap:

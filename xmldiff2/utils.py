@@ -1,6 +1,5 @@
 from __future__ import division
 
-from collections import namedtuple
 from operator import eq
 
 
@@ -44,12 +43,12 @@ def longest_common_subsequence(left_sequence, right_sequence, eqfn=eq):
 
     # Trim off the matching items at the beginning
     while (start < lend and start < rend and
-          eqfn(left_sequence[start], right_sequence[start])):
+           eqfn(left_sequence[start], right_sequence[start])):
         start += 1
 
     # trim off the matching items at the end
     while (start < lend and start < rend and
-          eqfn(left_sequence[lend-1], right_sequence[rend-1])):
+           eqfn(left_sequence[lend - 1], right_sequence[rend - 1])):
         lend -= 1
         rend -= 1
 
@@ -89,10 +88,7 @@ def longest_common_subsequence(left_sequence, right_sequence, eqfn=eq):
 
             if x >= lmax and y >= rmax:
                 # This is the best match
-                return [(x, x) for x in range(start)] + history + \
-                       list(zip(range(lend, lslen), range(rend, rslen)))
+                return [(e, e) for e in range(start)] + history + \
+                    list(zip(range(lend, lslen), range(rend, rslen)))
             else:
                 furtherst[k] = (x, history)
-
-    # No matches
-    return []

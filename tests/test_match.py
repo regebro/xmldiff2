@@ -555,7 +555,6 @@ class TestMatcherMatch(unittest.TestCase):
 </document>
 """
 
-        # xml:id clearly shows the first section is inserted
         right = u"""<document>
     <story firstPageTemplate="FirstPage">
         <section ref="3" single-ref="3">
@@ -681,7 +680,6 @@ class TestMatcherAlignChildren(unittest.TestCase):
 </document>
 """
 
-        # xml:id clearly shows the first section is inserted
         right = u"""<document>
     <story firstPageTemplate="FirstPage">
         <section ref="3" single-ref="3">
@@ -710,7 +708,6 @@ class TestMatcherAlignChildren(unittest.TestCase):
 </document>
 """
 
-        # xml:id clearly shows the first section is inserted
         right = u"""<document>
     <story firstPageTemplate="FirstPage">
         <section ref="3" single-ref="3">
@@ -724,7 +721,7 @@ class TestMatcherAlignChildren(unittest.TestCase):
         result = self._align(left, right)
         self.assertEqual(result,
                          [('move', '/document/story/section/para[1]',
-                           '/document/story/section', 3)])
+                           '/document/story/section', 2)])
 
 
 class TestMatcherDiff(unittest.TestCase):
@@ -754,7 +751,6 @@ class TestMatcherDiff(unittest.TestCase):
 </document>
 """
 
-        # xml:id clearly shows the first section is inserted
         right = u"""<document>
     <story firstPageTemplate="FirstPage">
         <section ref="3" single-ref="3">
@@ -774,7 +770,7 @@ class TestMatcherDiff(unittest.TestCase):
             [('insert', 'section', '/document/story', 1),
              ('insert', '/document/story/section[2]/@ref', '4'),
              ('insert', '/document/story/section[2]/@single-ref', '4'),
-             ('move', '/document/story/section[2]/para[1]',
+             ('move', '/document/story/section[1]/para[3]',
               '/document/story/section[2]', 0),
              ('insert', 'para', '/document/story/section[2]', 0),
              ('update', '/document/story/section[2]/para[1]/text()',
@@ -782,6 +778,17 @@ class TestMatcherDiff(unittest.TestCase):
              ('delete', '/document/story/deleteme/para'),
              ('delete', '/document/story/deleteme'),
              ]
+        )
+
+    def test_needs_align(self):
+        left = "<root><n><p>1</p><p>2</p><p>3</p></n><n><p>4</p></n></root>"
+        right = "<root><n><p>2</p><p>4</p></n><n><p>1</p><p>3</p></n></root>"
+        result = self._diff(left, right)
+        self.assertEqual(
+            result,
+            [('move', '/root/n[1]', '/root', 1),
+             ('move', '/root/n[2]/p[2]', '/root/n[1]', 0),
+            ]
         )
 
     def test_rmldoc(self):
