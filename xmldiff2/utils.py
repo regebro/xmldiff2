@@ -93,6 +93,3 @@ def longest_common_subsequence(left_sequence, right_sequence, eqfn=eq):
                        list(zip(range(lend, lslen), range(rend, rslen)))
             else:
                 furtherst[k] = (x, history)
-
-    # No matches
-    return []

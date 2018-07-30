@@ -85,3 +85,6 @@ class TestLongestCommonSubsequence(unittest.TestCase):
         # There are several correct options here, make sure that doesn't
         # confuse it, we want just one, and don't care which.
         self._diff('HORSEBACK', 'SNOWFLAKE', 'SAK')
+
+        # Empty sequences:
+        self._diff('', '', '')
