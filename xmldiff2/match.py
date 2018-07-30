@@ -79,7 +79,7 @@ class Matcher(object):
                 # Try to shortcut for nodes that are not only equal but also
                 # in the same place in the tree
                 if (match == 1.0 and
-                    lroot.getpath(lnode) == rroot.getpath(rnode)):
+                   lroot.getpath(lnode) == rroot.getpath(rnode)):
                     # This is a complete match, break here
                     break
 
@@ -143,7 +143,7 @@ class Matcher(object):
                     right_children.remove(rchild)
                     break
 
-        return count/child_count
+        return count / child_count
 
     def update_node(self, left, right):
 
@@ -185,7 +185,7 @@ class Matcher(object):
         # Move: Check if any of the new attributes have the same value
         # as the removed attributes. If they do, it's actually
         # a renaming, and a move is one action instead of remove + insert
-        newattrmap = {v:k for (k, v) in right.attrib.items()
+        newattrmap = {v: k for (k, v) in right.attrib.items()
                       if k in newattrs}
         for lk in sorted(removedattrs):
             value = left.attrib[lk]
@@ -205,12 +205,12 @@ class Matcher(object):
         for key in sorted(newattrs):
             yield ('insert',
                    '%s/@%s' % (right_xpath, key),
-                    right.attrib[key])
+                   right.attrib[key])
             left.attrib[key] = right.attrib[key]
 
         # Delete: remove removed attributes
         for key in sorted(removedattrs):
-            if not key in left.attrib:
+            if key not in left.attrib:
                 # This was already moved
                 continue
             yield ('delete',
@@ -247,9 +247,6 @@ class Matcher(object):
         return i
 
     def align_children(self, left, right):
-        # Move this definition out
-        eqfn = lambda x, y: self._l2rmap[id(x)] is y
-
         lchildren = [c for c in left.getchildren()
                      if (id(c) in self._l2rmap and
                          self._l2rmap[id(c)].getparent() is right)]
@@ -260,7 +257,10 @@ class Matcher(object):
             # Nothing to align
             return
 
-        lcs = utils.longest_common_subsequence(lchildren, rchildren, eqfn)
+        lcs = utils.longest_common_subsequence(
+            lchildren, rchildren,
+            lambda x, y: self._l2rmap[id(x)] is y)
+
         for x, y in lcs:
             # Mark these as in order
             self._inorder.add(lchildren[x])
@@ -344,7 +344,6 @@ class Matcher(object):
             # (d) Align
             for action in self.align_children(lnode, rnode):
                 yield action
-
 
         for lnode in utils.post_order_traverse(self.left):
             if id(lnode) not in self._l2rmap:
