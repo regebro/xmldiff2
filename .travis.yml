@@ -1,0 +1,27 @@
+language: python
+
+python:
+  - 2.7
+  - 3.5
+  - 3.6
+  - 3.7
+  - pypy
+  - pypy3
+
+# Travis doesn't support 3.7 by default. Keep it in but allow it to fail,
+# and we can add support once it works.
+matrix:
+  allow_failures:
+    - python: 3.7
+
+install:
+  - pip install . coverage
+
+script:
+  - coverage run setup.py test
+
+after_success:
+  - coveralls
+
+cache:
+  pip: true
