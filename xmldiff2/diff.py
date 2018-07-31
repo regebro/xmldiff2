@@ -8,15 +8,15 @@ from xmldiff2 import utils
 
 
 # Update, Move, Delete and Insert are the edit script actions:
-Update = namedtuple('Update', ('node', 'value'))
-Move = namedtuple('Move', ('node', 'target', 'position'))
-Delete = namedtuple('Delete', ('node'))
+UpdateNode = namedtuple('UpdateNode', 'node text')
+DeleteNode = namedtuple('DeleteNode', 'node')
+InsertNode = namedtuple('InsertNode', 'target tag position')
+MoveNode = namedtuple('MoveNode', 'source target position')
 
-
-# Attributes don't need a position, so position should have a default value:
-class Insert(namedtuple('Insert', ('node', 'value', 'position'))):
-    def __new__(cls, node, value, position=None):
-        super(Insert, cls).__new__(cls, node, value, position)
+UpdateAttrib = namedtuple('UpdateAttrib', 'node name value')
+DeleteAttrib = namedtuple('DeleteAttrib', 'node name')
+InsertAttrib = namedtuple('InsertAttrib', 'target name value')
+MoveAttrib = namedtuple('MoveAttrib', 'source target oldname newname')
 
 
 class Differ(object):
@@ -108,6 +108,9 @@ class Differ(object):
         # that for now, we don't need it. That's strictly a part of the
         # insert phase, but hey, even the paper defining the phases
         # ignores the phases, so...
+        # For now, just make sure the roots are matched:
+        if id(self.left) not in self._l2rmap:
+            self.append_match(self.left, self.right, 1.0)
 
         return self._matches
 
@@ -115,6 +118,8 @@ class Differ(object):
         texts = []
 
         for each in sorted(node.attrib.items()):
+            texts.append(':'.join(each))
+        for each in sorted(node.nsmap.items()):
             texts.append(':'.join(each))
         if node.text:
             texts.append(node.text.strip())
@@ -125,7 +130,23 @@ class Differ(object):
 
     def leaf_ratio(self, left, right):
         # How similar two nodes are, with no consideration of their children
-        if (left.prefix, left.tag) != (right.prefix, right.tag):
+        if (isinstance(left, etree._Comment) or
+           isinstance(right, etree._Comment)):
+            if (isinstance(left, etree._Comment) and
+               isinstance(right, etree._Comment)):
+                # comments
+                self._sequencematcher.set_seqs(left.text, right.text)
+                return self._sequencematcher.ratio()
+            # One is a comment the other is not:
+            return 0
+
+        # Get rid of the URN in the tag for comparison:
+        ltag = left.tag.rsplit('}')[-1]
+        rtag = right.tag.rsplit('}')[-1]
+        #  If the prefix and the tag is the same, that's OK. But if the prefix
+        # or the tag has changed, then it's definitely not the same.
+        # However, this way we allow changing the URN of the prefix.
+        if (left.prefix, ltag) != (right.prefix, rtag):
             # Different tags == not the same node at all
             return 0
 
@@ -159,33 +180,31 @@ class Differ(object):
         return count / child_count
 
     def update_node(self, left, right):
-
         left_xpath = left.getroottree().getpath(left)
         right_xpath = right.getroottree().getpath(right)
 
         if left.text != right.text:
-            yield Update('%s/text()' % left_xpath, right.text)
+            yield UpdateNode(left_xpath, right.text)
             left.text = right.text
 
         if left.tail != right.tail:
             xpath = left.getroottree().getpath(left.getparent())
-            yield Update('%s/text()' % xpath, right.tail)
+            yield UpdateNode(xpath, right.tail)
             left.tail = right.tail
 
-        # Update: Look for differences in common attributes
+        # Update: Look for differences in attributes
+
         left_keys = set(left.attrib.keys())
         right_keys = set(right.attrib.keys())
-        newattrs = right_keys.difference(left_keys)
-        removedattrs = left_keys.difference(right_keys)
-        commonattrs = left_keys.intersection(right_keys)
+        new_keys = right_keys.difference(left_keys)
+        removed_keys = left_keys.difference(right_keys)
+        common_keys = left_keys.intersection(right_keys)
 
         # We sort the attributes to get a consistent order in the edit script.
         # That's only so we can do testing in a reasonable way...
-        for key in sorted(commonattrs):
+        for key in sorted(common_keys):
             if left.attrib[key] != right.attrib[key]:
-                yield Update(
-                       '%s/@%s' % (left_xpath, key),
-                       right.attrib[key])
+                yield UpdateAttrib(left_xpath, key, right.attrib[key])
                 left.attrib[key] = right.attrib[key]
 
         # Align: Not needed here, we don't care about the order of
@@ -195,32 +214,29 @@ class Differ(object):
         # as the removed attributes. If they do, it's actually
         # a renaming, and a move is one action instead of remove + insert
         newattrmap = {v: k for (k, v) in right.attrib.items()
-                      if k in newattrs}
-        for lk in sorted(removedattrs):
+                      if k in new_keys}
+        for lk in sorted(removed_keys):
             value = left.attrib[lk]
             if value in newattrmap:
                 rk = newattrmap[value]
-                yield Move(
-                       '%s/@%s' % (left_xpath, lk),
-                       '%s/@%s' % (right_xpath, rk),
-                       -1)  # Order is irrelevant, -1 is last
+                yield MoveAttrib(left_xpath, right_xpath, lk, rk)
                 # Remove from list of new attributes
-                newattrs.remove(rk)
+                new_keys.remove(rk)
                 # Update left node
                 left.attrib[rk] = value
                 del left.attrib[lk]
 
         # Insert: Find new attributes
-        for key in sorted(newattrs):
-            yield Insert('%s/@%s' % (right_xpath, key), right.attrib[key], -1)
+        for key in sorted(new_keys):
+            yield InsertAttrib(right_xpath, key, right.attrib[key])
             left.attrib[key] = right.attrib[key]
 
         # Delete: remove removed attributes
-        for key in sorted(removedattrs):
+        for key in sorted(removed_keys):
             if key not in left.attrib:
                 # This was already moved
                 continue
-            yield Delete('%s/@%s' % (left_xpath, key))
+            yield DeleteAttrib(left_xpath, key)
             del left.attrib[key]
 
     def find_pos(self, child):
@@ -278,10 +294,10 @@ class Differ(object):
             right_pos = self.find_pos(unaligned_right)
             rtarget = unaligned_right.getparent()
             ltarget = self._r2lmap[id(rtarget)]
-            yield Move(
-                   unaligned_left.getroottree().getpath(unaligned_left),
-                   rtarget.getroottree().getpath(rtarget),
-                   right_pos)
+            yield MoveNode(
+                unaligned_left.getroottree().getpath(unaligned_left),
+                rtarget.getroottree().getpath(rtarget),
+                right_pos)
             # Do the actual move:
             left.remove(unaligned_left)
             ltarget.insert(right_pos, unaligned_left)
@@ -296,7 +312,6 @@ class Differ(object):
         rtree = self.right.getroottree()
 
         for rnode in utils.breadth_first_traverse(self.right):
-
             # (a)
             rparent = rnode.getparent()
             ltarget = self._r2lmap.get(id(rparent))
@@ -306,7 +321,7 @@ class Differ(object):
                 # (i)
                 pos = self.find_pos(rnode)
                 # (ii)
-                yield Insert(rnode.tag, ltree.getpath(ltarget), pos)
+                yield InsertNode(ltree.getpath(ltarget), rnode.tag, pos)
                 # (iii)
                 lnode = ltarget.makeelement(rnode.tag)
                 self.append_match(lnode, rnode, 1.0)
@@ -336,10 +351,10 @@ class Differ(object):
                 lparent = lnode.getparent()
                 if ltarget is not lparent:
                     pos = self.find_pos(rnode)
-                    yield Move(
-                           ltree.getpath(lnode),
-                           rtree.getpath(rparent),
-                           pos)
+                    yield MoveNode(
+                        ltree.getpath(lnode),
+                        rtree.getpath(rparent),
+                        pos)
                     # Move the node from current parent to target
                     lparent.remove(lnode)
                     ltarget.insert(pos, lnode)
@@ -351,5 +366,5 @@ class Differ(object):
         for lnode in utils.post_order_traverse(self.left):
             if id(lnode) not in self._l2rmap:
                 # No match
-                yield Delete(ltree.getpath(lnode))
+                yield DeleteNode(ltree.getpath(lnode))
                 lnode.getparent().remove(lnode)

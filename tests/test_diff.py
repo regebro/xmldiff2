@@ -4,7 +4,10 @@ import unittest
 from io import open
 from lxml import etree
 from xmldiff2.utils import post_order_traverse, breadth_first_traverse
-from xmldiff2.diff import Differ, Update, Insert, Move, Delete
+from xmldiff2.diff import (Differ, UpdateNode, InsertNode, MoveNode,
+                           DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
+                           DeleteAttrib)
+
 
 class TestAPI(unittest.TestCase):
     left = u"<document><p>Text</p><p>More</p></document>"
@@ -627,12 +630,12 @@ class TestMatcherUpdateNode(unittest.TestCase):
         self.assertEqual(
             result,
             [
-                Update('/root/node/text()', 'The new text'),
-                Update('/root/text()', 'Also a tail!'),
-                Update('/root/node/@attr2', 'uhhuh'),
-                Move('/root/node/@attr1', '/root/node/@attr4', -1),
-                Insert('/root/node/@attr5', 'new', -1),
-                Delete('/root/node/@attr0'),
+                UpdateNode('/root/node', 'The new text'),
+                UpdateNode('/root', 'Also a tail!'),
+                UpdateAttrib('/root/node', 'attr2', 'uhhuh'),
+                MoveAttrib('/root/node', '/root/node', 'attr1', 'attr4'),
+                InsertAttrib('/root/node', 'attr5', 'new'),
+                DeleteAttrib('/root/node', 'attr0'),
             ]
         )
 
@@ -721,8 +724,8 @@ class TestMatcherAlignChildren(unittest.TestCase):
 """
         result = self._align(left, right)
         self.assertEqual(result,
-                         [Move('/document/story/section/para[1]',
-                               '/document/story/section', 2)])
+                         [MoveNode('/document/story/section/para[1]',
+                                   '/document/story/section', 2)])
 
 
 class TestMatcherDiff(unittest.TestCase):
@@ -734,10 +737,10 @@ class TestMatcherDiff(unittest.TestCase):
         right_tree = etree.XML(right, parser)
         differ = Differ()
         differ.set_trees(left_tree, right_tree)
-        matches = list(differ.diff())
-        return matches
+        editscript = list(differ.diff())
+        return editscript
 
-    def test_process_1(self):
+    def test_process(self):
         left = u"""<document>
     <story firstPageTemplate="FirstPage">
         <section ref="3" single-ref="3">
@@ -768,16 +771,16 @@ class TestMatcherDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [Insert('section', '/document/story', 1),
-             Insert('/document/story/section[2]/@ref', '4'),
-             Insert('/document/story/section[2]/@single-ref', '4'),
-             Move('/document/story/section[1]/para[3]',
-                  '/document/story/section[2]', 0),
-             Insert('para', '/document/story/section[2]', 0),
-             Update('/document/story/section[2]/para[1]/text()',
-                    'Fourth paragraph'),
-             Delete('/document/story/deleteme/para'),
-             Delete('/document/story/deleteme'),
+            [InsertNode('/document/story', 'section', 1),
+             InsertAttrib('/document/story/section[2]', 'ref', '4'),
+             InsertAttrib('/document/story/section[2]', 'single-ref', '4'),
+             MoveNode('/document/story/section[1]/para[3]',
+                      '/document/story/section[2]', 0),
+             InsertNode('/document/story/section[2]', 'para', 0),
+             UpdateNode('/document/story/section[2]/para[1]',
+                        'Fourth paragraph'),
+             DeleteNode('/document/story/deleteme/para'),
+             DeleteNode('/document/story/deleteme'),
              ]
         )
 
@@ -787,8 +790,8 @@ class TestMatcherDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [Move('/root/n[1]', '/root', 1),
-             Move('/root/n[2]/p[2]', '/root/n[1]', 0),
+            [MoveNode('/root/n[1]', '/root', 1),
+             MoveNode('/root/n[2]/p[2]', '/root/n[1]', 0),
             ]
         )
 
@@ -804,111 +807,174 @@ class TestMatcherDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [Insert(
-              '{http://namespaces.shoobx.com/application}section',
+            [InsertNode(
               '/document/story',
+              '{http://namespaces.shoobx.com/application}section',
               4),
-             Insert('/document/story/app:section[4]/@hidden', 'false'),
-             Insert('/document/story/app:section[4]/@name', 'sign'),
-             Insert('/document/story/app:section[4]/@ref', '3'),
-             Insert('/document/story/app:section[4]/@removed', 'false'),
-             Insert('/document/story/app:section[4]/@single-ref', '3'),
-             Insert(
-              '/document/story/app:section[4]/@title',
+             InsertAttrib('/document/story/app:section[4]', 'hidden', 'false'),
+             InsertAttrib('/document/story/app:section[4]', 'name', 'sign'),
+             InsertAttrib('/document/story/app:section[4]', 'ref', '3'),
+             InsertAttrib('/document/story/app:section[4]', 'removed', 'false'),
+             InsertAttrib('/document/story/app:section[4]', 'single-ref', '3'),
+             InsertAttrib(
+              '/document/story/app:section[4]', 'title',
               'Signing Bonus'),
-             Update('/document/story/app:section[5]/@ref', '4'),
-             Update('/document/story/app:section[5]/@single-ref', '4'),
-             Update('/document/story/app:section[6]/@ref', '5'),
-             Update('/document/story/app:section[6]/@single-ref', '5'),
-             Update('/document/story/app:section[7]/@ref', '6'),
-             Update('/document/story/app:section[7]/@single-ref', '6'),
-             Update('/document/story/app:section[8]/@ref', '7'),
-             Update('/document/story/app:section[8]/@single-ref', '7'),
-             Update('/document/story/app:section[9]/@ref', '8'),
-             Update('/document/story/app:section[9]/@single-ref', '8'),
-             Update('/document/story/app:section[10]/@ref', '9'),
-             Update('/document/story/app:section[10]/@single-ref', '9'),
-             Update('/document/story/app:section[11]/@ref', '10'),
-             Update('/document/story/app:section[11]/@single-ref', '10'),
-             Update('/document/story/app:section[12]/@ref', '11'),
-             Update('/document/story/app:section[12]/@single-ref', '11'),
-             Update('/document/story/app:section[14]/@ref', '12'),
-             Update('/document/story/app:section[14]/@single-ref', '12'),
-             Update(
-              '/document/story/app:section[1]/para[2]/app:placeholder/text()',
+             UpdateAttrib('/document/story/app:section[5]', 'ref', '4'),
+             UpdateAttrib('/document/story/app:section[5]', 'single-ref', '4'),
+             UpdateAttrib('/document/story/app:section[6]', 'ref', '5'),
+             UpdateAttrib('/document/story/app:section[6]', 'single-ref', '5'),
+             UpdateAttrib('/document/story/app:section[7]', 'ref', '6'),
+             UpdateAttrib('/document/story/app:section[7]', 'single-ref', '6'),
+             UpdateAttrib('/document/story/app:section[8]', 'ref', '7'),
+             UpdateAttrib('/document/story/app:section[8]', 'single-ref', '7'),
+             UpdateAttrib('/document/story/app:section[9]', 'ref', '8'),
+             UpdateAttrib('/document/story/app:section[9]', 'single-ref', '8'),
+             UpdateAttrib('/document/story/app:section[10]', 'ref', '9'),
+             UpdateAttrib('/document/story/app:section[10]', 'single-ref', '9'),
+             UpdateAttrib('/document/story/app:section[11]', 'ref', '10'),
+             UpdateAttrib('/document/story/app:section[11]', 'single-ref', '10'),
+             UpdateAttrib('/document/story/app:section[12]', 'ref', '11'),
+             UpdateAttrib('/document/story/app:section[12]', 'single-ref', '11'),
+             UpdateAttrib('/document/story/app:section[14]', 'ref', '12'),
+             UpdateAttrib('/document/story/app:section[14]', 'single-ref', '12'),
+             UpdateNode(
+              '/document/story/app:section[1]/para[2]/app:placeholder',
               'Second Name'),
-             Insert(
-              '{http://namespaces.shoobx.com/application}term',
+             InsertNode(
               '/document/story/app:section[4]',
+              '{http://namespaces.shoobx.com/application}term',
               0),
-             Insert(
-              '/document/story/app:section[4]/app:term/@name',
+             InsertAttrib(
+              '/document/story/app:section[4]/app:term', 'name',
               'sign_bonus'),
-             Insert('/document/story/app:section[4]/app:term/@set', 'ol'),
-             Insert('para', '/document/story/app:section[4]', 0),
-             Insert(
+             InsertAttrib('/document/story/app:section[4]/app:term', 'set', 'ol'),
+             InsertNode('/document/story/app:section[4]', 'para', 0),
+             InsertNode(
+              '/document/story/app:section[4]/para',
               '{http://namespaces.shoobx.com/application}ref',
-              '/document/story/app:section[4]/para',
               0),
-             Update(
-              '/document/story/app:section[4]/para/app:ref/text()',
+             UpdateNode(
+              '/document/story/app:section[4]/para/app:ref',
               '3'),
-             Update('/document/story/app:section[4]/para/text()', '. '),
-             Insert(
-              '/document/story/app:section[4]/para/app:ref/@name',
+             UpdateNode('/document/story/app:section[4]/para', '. '),
+             InsertAttrib(
+              '/document/story/app:section[4]/para/app:ref', 'name',
               'sign'),
-             Insert(
-              ('/document/story/app:section[4]/para/app:ref/' +
-               '@{http://namespaces.shoobx.com/preview}body'),
+             InsertAttrib(
+              '/document/story/app:section[4]/para/app:ref',
+              '{http://namespaces.shoobx.com/preview}body',
               '<Ref>'),
-             Insert('u', '/document/story/app:section[4]/para', 0),
-             Update(
-              '/document/story/app:section[4]/para/text()',
-              '.\n              You will also be paid a '),
-             Insert(
-              '{http://namespaces.shoobx.com/application}placeholder',
+             InsertNode('/document/story/app:section[4]/para', 'u', 0),
+             UpdateNode(
               '/document/story/app:section[4]/para',
+              '.\n              You will also be paid a '),
+             InsertNode(
+              '/document/story/app:section[4]/para',
+              '{http://namespaces.shoobx.com/application}placeholder',
               0),
-             Update(
-              '/document/story/app:section[4]/para/text()',
+             UpdateNode(
+              '/document/story/app:section[4]/para',
               (' signing\n              bonus, which will be paid on the ' +
                'next regularly scheduled pay date\n              after ' +
                'you start employment with the Company.\n              \n' +
                '            ')
               ),
-             Insert(
-              '/document/story/app:section[4]/para/app:placeholder/@field',
+             InsertAttrib(
+              '/document/story/app:section[4]/para/app:placeholder', 'field',
               'ol.sign_bonus_include_amt'),
-             Insert(
-              '/document/story/app:section[4]/para/app:placeholder/@missing',
+             InsertAttrib(
+              '/document/story/app:section[4]/para/app:placeholder', 'missing',
               'Signing Bonus Amount'),
-             Insert('b', '/document/story/app:section[4]/para/u', 0),
-             Update(
-              '/document/story/app:section[4]/para/u/b/text()',
+             InsertNode('/document/story/app:section[4]/para/u', 'b', 0),
+             UpdateNode(
+              '/document/story/app:section[4]/para/u/b',
               'Signing Bonus'),
-             Update(
-              '/document/story/app:section[5]/para/app:ref/text()',
+             UpdateNode(
+              '/document/story/app:section[5]/para/app:ref',
               '4'),
-             Update(
-              '/document/story/app:section[6]/para/app:ref/text()',
+             UpdateNode(
+              '/document/story/app:section[6]/para/app:ref',
               '5'),
-             Update(
-              '/document/story/app:section[7]/para/app:ref/text()',
+             UpdateNode(
+              '/document/story/app:section[7]/para/app:ref',
               '6'),
-             Update(
-              '/document/story/app:section[8]/para/app:ref/text()',
+             UpdateNode(
+              '/document/story/app:section[8]/para/app:ref',
               '7'),
-             Update(
-              '/document/story/app:section[9]/para/app:ref/text()',
+             UpdateNode(
+              '/document/story/app:section[9]/para/app:ref',
               '8'),
-             Update(
-              '/document/story/app:section[10]/para/app:ref/text()',
+             UpdateNode(
+              '/document/story/app:section[10]/para/app:ref',
               '9'),
-             Update(
-              '/document/story/app:section[11]/para/app:ref/text()',
+             UpdateNode(
+              '/document/story/app:section[11]/para/app:ref',
               '10'),
-             Update(
-              '/document/story/app:section[12]/para/app:ref/text()',
+             UpdateNode(
+              '/document/story/app:section[12]/para/app:ref',
               '11')
+            ]
+        )
+
+    def test_namespace(self):
+        # Test changing nodes and attributes with namespaces
+        left = u"""<document xmlns:app="someuri">
+    <story app:foo="FirstPage">
+        <app:section>
+            <foo:para xmlns:foo="otheruri">Lorem ipsum dolor sit amet,
+                consectetur adipiscing elit. Pellentesque feugiat metus quam.
+                Suspendisse potenti. Vestibulum quis ornare felis,
+                ac elementum sem.</foo:para>
+            <app:para xmlns:foo="otheruri">Second paragraph</app:para>
+            <app:para>Third paragraph</app:para>
+            <app:para>
+                Paragraph to tweak the matching of the section node
+            </app:para>
+            <app:para>
+                By making many matching children
+            </app:para>
+            <app:para>
+               Until the node matches properly.
+            </app:para>
+        </app:section>
+    </story>
+</document>
+"""
+
+        right = u"""<document xmlns:app="someuri">
+    <story app:foo="FirstPage">
+        <app:section>
+            <app:para>Lorem ipsum dolor sit amet,
+                consectetur adipiscing elit. Pellentesque feugiat metus quam.
+                Suspendisse potenti. Vestibulum quis ornare felis,
+                ac elementum sem.</app:para>
+            <app:para>Second paragraph</app:para>
+            <app:para app:attrib="value">Third paragraph</app:para>
+            <app:para>
+                Paragraph to tweak the matching of the section node
+            </app:para>
+            <app:para>
+                By making many matching children
+            </app:para>
+            <app:para>
+               Until the node matches properly.
+            </app:para>
+         </app:section>
+    </story>
+</document>
+"""
+        result = self._diff(left, right)
+        self.assertEqual(
+            result,
+            [InsertNode('/document/story/app:section', '{someuri}para', 0),
+             UpdateNode(
+                 '/document/story/app:section/app:para[1]',
+                 'Lorem ipsum dolor sit amet,\n                consectetur '
+                 'adipiscing elit. Pellentesque feugiat metus quam.\n'
+                 '                Suspendisse potenti. Vestibulum quis '
+                 'ornare felis,\n                ac elementum sem.'),
+             InsertAttrib('/document/story/app:section/app:para[3]',
+                          '{someuri}attrib', 'value'),
+             DeleteNode('/document/story/app:section/foo:para'),
             ]
         )

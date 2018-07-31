@@ -4,10 +4,12 @@ TODO
 First release:
 --------------
 
-* Actions should be named tuple objects, it's nicer than plain tuples.
+* 100% coverage, trafis, coveralls, pep8 - Done
+
+* Actions should be named tuple objects, it's nicer than plain tuples. - Done
 
 * Explicit namespace tests. Since we use lxml all the time this already works
-  as by magic, but we need to test for it.
+  as by magic, but we need to test for it. - Done
 
 * Support for making a diffed xml with diff:<action> tags.
 
