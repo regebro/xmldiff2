@@ -1,9 +1,22 @@
 from __future__ import division
 
+from collections import namedtuple
 from difflib import SequenceMatcher
 from lxml import etree
 
 from xmldiff2 import utils
+
+
+# Update, Move, Delete and Insert are the edit script actions:
+Update = namedtuple('Update', ('node', 'value'))
+Move = namedtuple('Move', ('node', 'target', 'position'))
+Delete = namedtuple('Delete', ('node'))
+
+
+# Attributes don't need a position, so position should have a default value:
+class Insert(namedtuple('Insert', ('node', 'value', 'position'))):
+    def __new__(cls, node, value, position=None):
+        super(Insert, cls).__new__(cls, node, value, position)
 
 
 class Matcher(object):
@@ -151,16 +164,12 @@ class Matcher(object):
         right_xpath = right.getroottree().getpath(right)
 
         if left.text != right.text:
-            yield ('update',
-                   '%s/text()' % left_xpath,
-                   right.text)
+            yield Update('%s/text()' % left_xpath, right.text)
             left.text = right.text
 
         if left.tail != right.tail:
             xpath = left.getroottree().getpath(left.getparent())
-            yield ('update',
-                   '%s/text()' % xpath,
-                   right.tail)
+            yield Update('%s/text()' % xpath, right.tail)
             left.tail = right.tail
 
         # Update: Look for differences in common attributes
@@ -174,7 +183,7 @@ class Matcher(object):
         # That's only so we can do testing in a reasonable way...
         for key in sorted(commonattrs):
             if left.attrib[key] != right.attrib[key]:
-                yield ('update',
+                yield Update(
                        '%s/@%s' % (left_xpath, key),
                        right.attrib[key])
                 left.attrib[key] = right.attrib[key]
@@ -191,7 +200,7 @@ class Matcher(object):
             value = left.attrib[lk]
             if value in newattrmap:
                 rk = newattrmap[value]
-                yield ('move',
+                yield Move(
                        '%s/@%s' % (left_xpath, lk),
                        '%s/@%s' % (right_xpath, rk),
                        -1)  # Order is irrelevant, -1 is last
@@ -203,9 +212,7 @@ class Matcher(object):
 
         # Insert: Find new attributes
         for key in sorted(newattrs):
-            yield ('insert',
-                   '%s/@%s' % (right_xpath, key),
-                   right.attrib[key])
+            yield Insert('%s/@%s' % (right_xpath, key), right.attrib[key], -1)
             left.attrib[key] = right.attrib[key]
 
         # Delete: remove removed attributes
@@ -213,15 +220,14 @@ class Matcher(object):
             if key not in left.attrib:
                 # This was already moved
                 continue
-            yield ('delete',
-                   '%s/@%s' % (left_xpath, key))
+            yield Delete('%s/@%s' % (left_xpath, key))
             del left.attrib[key]
 
     def find_pos(self, child):
         parent = child.getparent()
         # The paper here first checks in the child is the first child in
         # order, but I am entirely unable to actually make that happen, and
-        # if it does, the last part will catch that case anyway, and it also
+        # if it does, the "else:" will catch that case anyway, and it also
         # deals with the case of no child being in order.
 
         # Find the last sibling before the child that is in order
@@ -272,7 +278,7 @@ class Matcher(object):
             right_pos = self.find_pos(unaligned_right)
             rtarget = unaligned_right.getparent()
             ltarget = self._r2lmap[id(rtarget)]
-            yield ('move',
+            yield Move(
                    unaligned_left.getroottree().getpath(unaligned_left),
                    rtarget.getroottree().getpath(rtarget),
                    right_pos)
@@ -300,10 +306,7 @@ class Matcher(object):
                 # (i)
                 pos = self.find_pos(rnode)
                 # (ii)
-                yield ('insert',
-                       rnode.tag,
-                       ltree.getpath(ltarget),
-                       pos)
+                yield Insert(rnode.tag, ltree.getpath(ltarget), pos)
                 # (iii)
                 lnode = ltarget.makeelement(rnode.tag)
                 self.append_match(lnode, rnode, 1.0)
@@ -333,7 +336,7 @@ class Matcher(object):
                 lparent = lnode.getparent()
                 if ltarget is not lparent:
                     pos = self.find_pos(rnode)
-                    yield ('move',
+                    yield Move(
                            ltree.getpath(lnode),
                            rtree.getpath(rparent),
                            pos)
@@ -348,5 +351,5 @@ class Matcher(object):
         for lnode in utils.post_order_traverse(self.left):
             if id(lnode) not in self._l2rmap:
                 # No match
-                yield ('delete', ltree.getpath(lnode))
+                yield Delete(ltree.getpath(lnode))
                 lnode.getparent().remove(lnode)

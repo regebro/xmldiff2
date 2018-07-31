@@ -3,14 +3,15 @@ import unittest
 
 from io import open
 from lxml import etree
-from xmldiff2 import match, utils
+from xmldiff2.utils import post_order_traverse, breadth_first_traverse
+from xmldiff2.match import Matcher, Update, Insert, Move, Delete
 
 class TestAPI(unittest.TestCase):
     left = u"<document><p>Text</p><p>More</p></document>"
     right = u"<document><p>Tokst</p><p>More</p></document>"
     lefttree = etree.fromstring(left)
     righttree = etree.fromstring(right)
-    matcher = match.Matcher()
+    matcher = Matcher()
 
     def test_set_trees(self):
         # Passing in just one parameter causes an error:
@@ -94,14 +95,14 @@ class TestNodeRatios(unittest.TestCase):
 
         lefttree = etree.fromstring(xml)
         righttree = etree.fromstring(xml)
-        matcher = match.Matcher()
+        matcher = Matcher()
         matcher.set_trees(lefttree, righttree)
         matcher.match()
 
         # Every node in these trees should get a 1.0 comparison from
         # both comparisons.
-        for left, right in zip(utils.post_order_traverse(lefttree),
-                               utils.post_order_traverse(righttree)):
+        for left, right in zip(post_order_traverse(lefttree),
+                               post_order_traverse(righttree)):
             self.assertEqual(matcher.leaf_ratio(left, right), 1.0)
             self.assertEqual(matcher.child_ratio(left, right), 1.0)
 
@@ -139,7 +140,7 @@ class TestNodeRatios(unittest.TestCase):
 
         lefttree = etree.fromstring(left)
         righttree = etree.fromstring(right)
-        matcher = match.Matcher()
+        matcher = Matcher()
 
         # Make some choice comparisons here
         # These node are exactly the same
@@ -197,7 +198,7 @@ class TestNodeRatios(unittest.TestCase):
 
         lefttree = etree.fromstring(left)
         righttree = etree.fromstring(right)
-        matcher = match.Matcher()
+        matcher = Matcher()
         matcher.set_trees(lefttree, righttree)
         matcher.match()
 
@@ -260,7 +261,7 @@ class TestNodeRatios(unittest.TestCase):
 
         lefttree = etree.fromstring(left)
         righttree = etree.fromstring(right)
-        matcher = match.Matcher()
+        matcher = Matcher()
         matcher.set_trees(lefttree, righttree)
         matcher.match()
 
@@ -295,7 +296,7 @@ class TestMatcherMatch(unittest.TestCase):
     def _match(self, left, right):
         left_tree = etree.fromstring(left)
         right_tree = etree.fromstring(right)
-        matcher = match.Matcher()
+        matcher = Matcher()
         matcher.set_trees(left_tree, right_tree)
         matches = matcher.match()
         lpath = left_tree.getroottree().getpath
@@ -315,7 +316,7 @@ class TestMatcherMatch(unittest.TestCase):
 </document>
 """
         result = self._match(xml, xml)
-        nodes = list(utils.post_order_traverse(etree.fromstring(xml)))
+        nodes = list(post_order_traverse(etree.fromstring(xml)))
         # Everything matches
         self.assertEqual(len(result), len(nodes))
 
@@ -588,7 +589,7 @@ class TestMatcherUpdateNode(unittest.TestCase):
     def _match(self, left, right):
         left_tree = etree.fromstring(left)
         right_tree = etree.fromstring(right)
-        matcher = match.Matcher()
+        matcher = Matcher()
         matcher.set_trees(left_tree, right_tree)
         matches = matcher.match()
         steps = []
@@ -610,7 +611,7 @@ class TestMatcherUpdateNode(unittest.TestCase):
 </document>
 """
         result = self._match(xml, xml)
-        nodes = list(utils.post_order_traverse(etree.fromstring(xml)))
+        nodes = list(post_order_traverse(etree.fromstring(xml)))
         # Everything matches
         self.assertEqual(result, [])
 
@@ -626,12 +627,12 @@ class TestMatcherUpdateNode(unittest.TestCase):
         self.assertEqual(
             result,
             [
-                ('update', '/root/node/text()', 'The new text'),
-                ('update', '/root/text()', 'Also a tail!'),
-                ('update', '/root/node/@attr2', 'uhhuh'),
-                ('move', '/root/node/@attr1', '/root/node/@attr4', -1),
-                ('insert', '/root/node/@attr5', 'new'),
-                ('delete', '/root/node/@attr0'),
+                Update('/root/node/text()', 'The new text'),
+                Update('/root/text()', 'Also a tail!'),
+                Update('/root/node/@attr2', 'uhhuh'),
+                Move('/root/node/@attr1', '/root/node/@attr4', -1),
+                Insert('/root/node/@attr5', 'new', -1),
+                Delete('/root/node/@attr0'),
             ]
         )
 
@@ -642,7 +643,7 @@ class TestMatcherAlignChildren(unittest.TestCase):
     def _align(self, left, right):
         left_tree = etree.fromstring(left)
         right_tree = etree.fromstring(right)
-        matcher = match.Matcher()
+        matcher = Matcher()
         matcher.set_trees(left_tree, right_tree)
         matches = matcher.match()
         steps = []
@@ -720,8 +721,8 @@ class TestMatcherAlignChildren(unittest.TestCase):
 """
         result = self._align(left, right)
         self.assertEqual(result,
-                         [('move', '/document/story/section/para[1]',
-                           '/document/story/section', 2)])
+                         [Move('/document/story/section/para[1]',
+                               '/document/story/section', 2)])
 
 
 class TestMatcherDiff(unittest.TestCase):
@@ -731,7 +732,7 @@ class TestMatcherDiff(unittest.TestCase):
         parser = etree.XMLParser(remove_blank_text=True)
         left_tree = etree.XML(left, parser)
         right_tree = etree.XML(right, parser)
-        matcher = match.Matcher()
+        matcher = Matcher()
         matcher.set_trees(left_tree, right_tree)
         matches = list(matcher.diff())
         return matches
@@ -767,16 +768,16 @@ class TestMatcherDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [('insert', 'section', '/document/story', 1),
-             ('insert', '/document/story/section[2]/@ref', '4'),
-             ('insert', '/document/story/section[2]/@single-ref', '4'),
-             ('move', '/document/story/section[1]/para[3]',
-              '/document/story/section[2]', 0),
-             ('insert', 'para', '/document/story/section[2]', 0),
-             ('update', '/document/story/section[2]/para[1]/text()',
-              'Fourth paragraph'),
-             ('delete', '/document/story/deleteme/para'),
-             ('delete', '/document/story/deleteme'),
+            [Insert('section', '/document/story', 1),
+             Insert('/document/story/section[2]/@ref', '4'),
+             Insert('/document/story/section[2]/@single-ref', '4'),
+             Move('/document/story/section[1]/para[3]',
+                  '/document/story/section[2]', 0),
+             Insert('para', '/document/story/section[2]', 0),
+             Update('/document/story/section[2]/para[1]/text()',
+                    'Fourth paragraph'),
+             Delete('/document/story/deleteme/para'),
+             Delete('/document/story/deleteme'),
              ]
         )
 
@@ -786,8 +787,8 @@ class TestMatcherDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [('move', '/root/n[1]', '/root', 1),
-             ('move', '/root/n[2]/p[2]', '/root/n[1]', 0),
+            [Move('/root/n[1]', '/root', 1),
+             Move('/root/n[2]/p[2]', '/root/n[1]', 0),
             ]
         )
 
@@ -803,110 +804,110 @@ class TestMatcherDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [('insert',
+            [Insert(
               '{http://namespaces.shoobx.com/application}section',
               '/document/story',
               4),
-             ('insert', '/document/story/app:section[4]/@hidden', 'false'),
-             ('insert', '/document/story/app:section[4]/@name', 'sign'),
-             ('insert', '/document/story/app:section[4]/@ref', '3'),
-             ('insert', '/document/story/app:section[4]/@removed', 'false'),
-             ('insert', '/document/story/app:section[4]/@single-ref', '3'),
-             ('insert',
+             Insert('/document/story/app:section[4]/@hidden', 'false'),
+             Insert('/document/story/app:section[4]/@name', 'sign'),
+             Insert('/document/story/app:section[4]/@ref', '3'),
+             Insert('/document/story/app:section[4]/@removed', 'false'),
+             Insert('/document/story/app:section[4]/@single-ref', '3'),
+             Insert(
               '/document/story/app:section[4]/@title',
               'Signing Bonus'),
-             ('update', '/document/story/app:section[5]/@ref', '4'),
-             ('update', '/document/story/app:section[5]/@single-ref', '4'),
-             ('update', '/document/story/app:section[6]/@ref', '5'),
-             ('update', '/document/story/app:section[6]/@single-ref', '5'),
-             ('update', '/document/story/app:section[7]/@ref', '6'),
-             ('update', '/document/story/app:section[7]/@single-ref', '6'),
-             ('update', '/document/story/app:section[8]/@ref', '7'),
-             ('update', '/document/story/app:section[8]/@single-ref', '7'),
-             ('update', '/document/story/app:section[9]/@ref', '8'),
-             ('update', '/document/story/app:section[9]/@single-ref', '8'),
-             ('update', '/document/story/app:section[10]/@ref', '9'),
-             ('update', '/document/story/app:section[10]/@single-ref', '9'),
-             ('update', '/document/story/app:section[11]/@ref', '10'),
-             ('update', '/document/story/app:section[11]/@single-ref', '10'),
-             ('update', '/document/story/app:section[12]/@ref', '11'),
-             ('update', '/document/story/app:section[12]/@single-ref', '11'),
-             ('update', '/document/story/app:section[14]/@ref', '12'),
-             ('update', '/document/story/app:section[14]/@single-ref', '12'),
-             ('update',
+             Update('/document/story/app:section[5]/@ref', '4'),
+             Update('/document/story/app:section[5]/@single-ref', '4'),
+             Update('/document/story/app:section[6]/@ref', '5'),
+             Update('/document/story/app:section[6]/@single-ref', '5'),
+             Update('/document/story/app:section[7]/@ref', '6'),
+             Update('/document/story/app:section[7]/@single-ref', '6'),
+             Update('/document/story/app:section[8]/@ref', '7'),
+             Update('/document/story/app:section[8]/@single-ref', '7'),
+             Update('/document/story/app:section[9]/@ref', '8'),
+             Update('/document/story/app:section[9]/@single-ref', '8'),
+             Update('/document/story/app:section[10]/@ref', '9'),
+             Update('/document/story/app:section[10]/@single-ref', '9'),
+             Update('/document/story/app:section[11]/@ref', '10'),
+             Update('/document/story/app:section[11]/@single-ref', '10'),
+             Update('/document/story/app:section[12]/@ref', '11'),
+             Update('/document/story/app:section[12]/@single-ref', '11'),
+             Update('/document/story/app:section[14]/@ref', '12'),
+             Update('/document/story/app:section[14]/@single-ref', '12'),
+             Update(
               '/document/story/app:section[1]/para[2]/app:placeholder/text()',
               'Second Name'),
-             ('insert',
+             Insert(
               '{http://namespaces.shoobx.com/application}term',
               '/document/story/app:section[4]',
               0),
-             ('insert',
+             Insert(
               '/document/story/app:section[4]/app:term/@name',
               'sign_bonus'),
-             ('insert', '/document/story/app:section[4]/app:term/@set', 'ol'),
-             ('insert', 'para', '/document/story/app:section[4]', 0),
-             ('insert',
+             Insert('/document/story/app:section[4]/app:term/@set', 'ol'),
+             Insert('para', '/document/story/app:section[4]', 0),
+             Insert(
               '{http://namespaces.shoobx.com/application}ref',
               '/document/story/app:section[4]/para',
               0),
-             ('update',
+             Update(
               '/document/story/app:section[4]/para/app:ref/text()',
               '3'),
-             ('update', '/document/story/app:section[4]/para/text()', '. '),
-             ('insert',
+             Update('/document/story/app:section[4]/para/text()', '. '),
+             Insert(
               '/document/story/app:section[4]/para/app:ref/@name',
               'sign'),
-             ('insert',
+             Insert(
               ('/document/story/app:section[4]/para/app:ref/' +
                '@{http://namespaces.shoobx.com/preview}body'),
               '<Ref>'),
-             ('insert', 'u', '/document/story/app:section[4]/para', 0),
-             ('update',
+             Insert('u', '/document/story/app:section[4]/para', 0),
+             Update(
               '/document/story/app:section[4]/para/text()',
               '.\n              You will also be paid a '),
-             ('insert',
+             Insert(
               '{http://namespaces.shoobx.com/application}placeholder',
               '/document/story/app:section[4]/para',
               0),
-             ('update',
+             Update(
               '/document/story/app:section[4]/para/text()',
               (' signing\n              bonus, which will be paid on the ' +
                'next regularly scheduled pay date\n              after ' +
                'you start employment with the Company.\n              \n' +
                '            ')
               ),
-             ('insert',
+             Insert(
               '/document/story/app:section[4]/para/app:placeholder/@field',
               'ol.sign_bonus_include_amt'),
-             ('insert',
+             Insert(
               '/document/story/app:section[4]/para/app:placeholder/@missing',
               'Signing Bonus Amount'),
-             ('insert', 'b', '/document/story/app:section[4]/para/u', 0),
-             ('update',
+             Insert('b', '/document/story/app:section[4]/para/u', 0),
+             Update(
               '/document/story/app:section[4]/para/u/b/text()',
               'Signing Bonus'),
-             ('update',
+             Update(
               '/document/story/app:section[5]/para/app:ref/text()',
               '4'),
-             ('update',
+             Update(
               '/document/story/app:section[6]/para/app:ref/text()',
               '5'),
-             ('update',
+             Update(
               '/document/story/app:section[7]/para/app:ref/text()',
               '6'),
-             ('update',
+             Update(
               '/document/story/app:section[8]/para/app:ref/text()',
               '7'),
-             ('update',
+             Update(
               '/document/story/app:section[9]/para/app:ref/text()',
               '8'),
-             ('update',
+             Update(
               '/document/story/app:section[10]/para/app:ref/text()',
               '9'),
-             ('update',
+             Update(
               '/document/story/app:section[11]/para/app:ref/text()',
               '10'),
-             ('update',
+             Update(
               '/document/story/app:section[12]/para/app:ref/text()',
               '11')
             ]
