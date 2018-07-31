@@ -25,7 +25,7 @@ From the commandline::
 As a library::
 
   from lxml import etree
-  from xmldiff2 import match, format
+  from xmldiff2 import diff, format
 
   with open('file1.xml', 'rt', encoding='utf8') as f:
       file1 = etree.parse(f)
@@ -33,7 +33,7 @@ As a library::
   with open('file2.xml', 'rt', encoding='utf8') as f:
       file2 = etree.parse(f)
 
-  matcher = match.Matcher()
-  diff = matcher.diff(file1.getroot(), file2.getroot())
+  differ = diff.Differ()
+  diff = differ.diff(file1.getroot(), file2.getroot())
 
   print(format.TextFormatter(diff))

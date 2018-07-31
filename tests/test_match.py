@@ -4,42 +4,42 @@ import unittest
 from io import open
 from lxml import etree
 from xmldiff2.utils import post_order_traverse, breadth_first_traverse
-from xmldiff2.match import Matcher, Update, Insert, Move, Delete
+from xmldiff2.diff import Differ, Update, Insert, Move, Delete
 
 class TestAPI(unittest.TestCase):
     left = u"<document><p>Text</p><p>More</p></document>"
     right = u"<document><p>Tokst</p><p>More</p></document>"
     lefttree = etree.fromstring(left)
     righttree = etree.fromstring(right)
-    matcher = Matcher()
+    differ = Differ()
 
     def test_set_trees(self):
         # Passing in just one parameter causes an error:
         with self.assertRaises(TypeError):
-            self.matcher.set_trees(self.lefttree, None)
+            self.differ.set_trees(self.lefttree, None)
 
         # Passing in something that isn't iterable also cause errors...
         with self.assertRaises(TypeError):
-            self.matcher.set_trees(object(), self.righttree)
+            self.differ.set_trees(object(), self.righttree)
 
         # This is the way:
-        self.matcher.set_trees(self.lefttree, self.righttree)
+        self.differ.set_trees(self.lefttree, self.righttree)
 
     def test_match(self):
         # Passing in just one parameter causes an error:
         with self.assertRaises(TypeError):
-            self.matcher.match(self.lefttree, None)
+            self.differ.match(self.lefttree, None)
 
         # Passing in something that isn't iterable also cause errors...
         with self.assertRaises(TypeError):
-            self.matcher.match(object(), self.righttree)
+            self.differ.match(object(), self.righttree)
 
         # This is the way:
-        res1 = self.matcher.match(self.lefttree, self.righttree)
+        res1 = self.differ.match(self.lefttree, self.righttree)
 
         # Or, you can use set_trees:
-        self.matcher.set_trees(self.lefttree, self.righttree)
-        res2 = self.matcher.match()
+        self.differ.set_trees(self.lefttree, self.righttree)
+        res2 = self.differ.match()
 
         # The match sequences should be the same, of course:
         self.assertEqual(res1, res2)
@@ -48,26 +48,26 @@ class TestAPI(unittest.TestCase):
         self.assertIsNot(res1, res2)
         # However, if we call match() a second time without setting
         # new sequences, we'll get a cached result:
-        self.assertIs(self.matcher.match(), res2)
+        self.assertIs(self.differ.match(), res2)
 
     def test_diff(self):
         # Passing in just one parameter causes an error:
         with self.assertRaises(TypeError):
-            list(self.matcher.diff(self.lefttree, None))
+            list(self.differ.diff(self.lefttree, None))
 
         # Passing in something that isn't iterable also cause errors...
         with self.assertRaises(TypeError):
-            list(self.matcher.diff(object(), self.righttree))
+            list(self.differ.diff(object(), self.righttree))
 
         # This is the way:
-        res1 = list(self.matcher.diff(self.lefttree, self.righttree))
+        res1 = list(self.differ.diff(self.lefttree, self.righttree))
 
         # Or, you can use set_trees() or match()
         # We need to reparse self.lefttree, since after the diffing they
         # are equal.
         self.lefttree = etree.fromstring(self.left)
-        self.matcher.set_trees(self.lefttree, self.righttree)
-        res2 = list(self.matcher.diff())
+        self.differ.set_trees(self.lefttree, self.righttree)
+        res2 = list(self.differ.diff())
 
         # The match sequences should be the same, of course:
         self.assertEqual(res1, res2)
@@ -76,7 +76,7 @@ class TestAPI(unittest.TestCase):
         self.assertIsNot(res1, res2)
         # There is no caching of diff(), so running it again means another
         # diffing.
-        self.assertIsNot(list(self.matcher.diff()), res2)
+        self.assertIsNot(list(self.differ.diff()), res2)
 
 class TestNodeRatios(unittest.TestCase):
 
@@ -95,16 +95,16 @@ class TestNodeRatios(unittest.TestCase):
 
         lefttree = etree.fromstring(xml)
         righttree = etree.fromstring(xml)
-        matcher = Matcher()
-        matcher.set_trees(lefttree, righttree)
-        matcher.match()
+        differ = Differ()
+        differ.set_trees(lefttree, righttree)
+        differ.match()
 
         # Every node in these trees should get a 1.0 comparison from
         # both comparisons.
         for left, right in zip(post_order_traverse(lefttree),
                                post_order_traverse(righttree)):
-            self.assertEqual(matcher.leaf_ratio(left, right), 1.0)
-            self.assertEqual(matcher.child_ratio(left, right), 1.0)
+            self.assertEqual(differ.leaf_ratio(left, right), 1.0)
+            self.assertEqual(differ.child_ratio(left, right), 1.0)
 
 
     def test_compare_different_leafs(self):
@@ -140,26 +140,26 @@ class TestNodeRatios(unittest.TestCase):
 
         lefttree = etree.fromstring(left)
         righttree = etree.fromstring(right)
-        matcher = Matcher()
+        differ = Differ()
 
         # Make some choice comparisons here
         # These node are exactly the same
         left = lefttree.xpath('/document/story/section[3]/para')[0]
         right = righttree.xpath('/document/story/section[3]/para')[0]
 
-        self.assertEqual(matcher.leaf_ratio(left, right), 1.0)
+        self.assertEqual(differ.leaf_ratio(left, right), 1.0)
 
         # These nodes have slightly different text, but no children
         left = lefttree.xpath('/document/story/section[2]/para')[0]
         right = righttree.xpath('/document/story/section[2]/para')[0]
 
-        self.assertAlmostEqual(matcher.leaf_ratio(left, right),
+        self.assertAlmostEqual(differ.leaf_ratio(left, right),
                                0.7058823529411765)
 
         # These nodes should not be very similar
         left = lefttree.xpath('/document/story/section[1]/para')[0]
         right = righttree.xpath('/document/story/section[1]/para')[0]
-        self.assertAlmostEqual(matcher.leaf_ratio(left, right),
+        self.assertAlmostEqual(differ.leaf_ratio(left, right),
                                0.2692307692307692)
 
 
@@ -198,9 +198,9 @@ class TestNodeRatios(unittest.TestCase):
 
         lefttree = etree.fromstring(left)
         righttree = etree.fromstring(right)
-        matcher = Matcher()
-        matcher.set_trees(lefttree, righttree)
-        matcher.match()
+        differ = Differ()
+        differ.set_trees(lefttree, righttree)
+        differ.match()
 
         # Make some choice comparisons here. leaf_ratio will always be 1.0,
         # as these leafs have the same attributes and no text, even though
@@ -208,22 +208,22 @@ class TestNodeRatios(unittest.TestCase):
         left = lefttree.xpath('/document/story/section[1]')[0]
         right = righttree.xpath('/document/story/section[1]')[0]
 
-        self.assertEqual(matcher.leaf_ratio(left, right), 1.0)
+        self.assertEqual(differ.leaf_ratio(left, right), 1.0)
         # Only one of two matches:
-        self.assertEqual(matcher.child_ratio(left, right), 0.5)
+        self.assertEqual(differ.child_ratio(left, right), 0.5)
 
         left = lefttree.xpath('/document/story/section[2]')[0]
         right = righttree.xpath('/document/story/section[2]')[0]
 
-        self.assertEqual(matcher.leaf_ratio(left, right), 1.0)
+        self.assertEqual(differ.leaf_ratio(left, right), 1.0)
         # Only one of two matches:
-        self.assertEqual(matcher.child_ratio(left, right), 0.5)
+        self.assertEqual(differ.child_ratio(left, right), 0.5)
 
         # These nodes should not be very similar
         left = lefttree.xpath('/document/story/section[3]')[0]
         right = righttree.xpath('/document/story/section[3]')[0]
-        self.assertEqual(matcher.leaf_ratio(left, right), 1.0)
-        self.assertEqual(matcher.child_ratio(left, right), 1.0)
+        self.assertEqual(differ.leaf_ratio(left, right), 1.0)
+        self.assertEqual(differ.child_ratio(left, right), 1.0)
 
 
     def test_compare_with_xmlid(self):
@@ -261,9 +261,9 @@ class TestNodeRatios(unittest.TestCase):
 
         lefttree = etree.fromstring(left)
         righttree = etree.fromstring(right)
-        matcher = Matcher()
-        matcher.set_trees(lefttree, righttree)
-        matcher.match()
+        differ = Differ()
+        differ.set_trees(lefttree, righttree)
+        differ.match()
 
         # Make some choice comparisons here.
 
@@ -271,24 +271,24 @@ class TestNodeRatios(unittest.TestCase):
         right = righttree.xpath('/document/story/section[1]')[0]
 
         # These have different id's
-        self.assertEqual(matcher.leaf_ratio(left, right), 0)
+        self.assertEqual(differ.leaf_ratio(left, right), 0)
         # And one out of two children in common
-        self.assertEqual(matcher.child_ratio(left, right), 0.5)
+        self.assertEqual(differ.child_ratio(left, right), 0.5)
 
         # Here's the ones with the same id:
         left = lefttree.xpath('/document/story/section[1]')[0]
         right = righttree.xpath('/document/story/section[2]')[0]
 
-        self.assertEqual(matcher.leaf_ratio(left, right), 1.0)
+        self.assertEqual(differ.leaf_ratio(left, right), 1.0)
         # And one out of two children in common
-        self.assertEqual(matcher.child_ratio(left, right), 0.5)
+        self.assertEqual(differ.child_ratio(left, right), 0.5)
 
         # The last ones are completely similar, but only one
         # has an xml:id, so they do not match.
         left = lefttree.xpath('/document/story/section[3]')[0]
         right = righttree.xpath('/document/story/section[3]')[0]
-        self.assertEqual(matcher.leaf_ratio(left, right), 0)
-        self.assertEqual(matcher.child_ratio(left, right), 1.0)
+        self.assertEqual(differ.leaf_ratio(left, right), 0)
+        self.assertEqual(differ.child_ratio(left, right), 1.0)
 
 
 class TestMatcherMatch(unittest.TestCase):
@@ -296,9 +296,9 @@ class TestMatcherMatch(unittest.TestCase):
     def _match(self, left, right):
         left_tree = etree.fromstring(left)
         right_tree = etree.fromstring(right)
-        matcher = Matcher()
-        matcher.set_trees(left_tree, right_tree)
-        matches = matcher.match()
+        differ = Differ()
+        differ.set_trees(left_tree, right_tree)
+        matches = differ.match()
         lpath = left_tree.getroottree().getpath
         rpath = right_tree.getroottree().getpath
         return [(lpath(item[0]), rpath(item[1])) for item in matches]
@@ -589,12 +589,12 @@ class TestMatcherUpdateNode(unittest.TestCase):
     def _match(self, left, right):
         left_tree = etree.fromstring(left)
         right_tree = etree.fromstring(right)
-        matcher = Matcher()
-        matcher.set_trees(left_tree, right_tree)
-        matches = matcher.match()
+        differ = Differ()
+        differ.set_trees(left_tree, right_tree)
+        matches = differ.match()
         steps = []
         for left, right, m in matches:
-            steps.extend(matcher.update_node(left, right))
+            steps.extend(differ.update_node(left, right))
 
         return steps
 
@@ -643,12 +643,12 @@ class TestMatcherAlignChildren(unittest.TestCase):
     def _align(self, left, right):
         left_tree = etree.fromstring(left)
         right_tree = etree.fromstring(right)
-        matcher = Matcher()
-        matcher.set_trees(left_tree, right_tree)
-        matches = matcher.match()
+        differ = Differ()
+        differ.set_trees(left_tree, right_tree)
+        matches = differ.match()
         steps = []
         for left, right, m in matches:
-            steps.extend(matcher.align_children(left, right))
+            steps.extend(differ.align_children(left, right))
         return steps
 
     def test_same_tree(self):
@@ -732,9 +732,9 @@ class TestMatcherDiff(unittest.TestCase):
         parser = etree.XMLParser(remove_blank_text=True)
         left_tree = etree.XML(left, parser)
         right_tree = etree.XML(right, parser)
-        matcher = Matcher()
-        matcher.set_trees(left_tree, right_tree)
-        matches = list(matcher.diff())
+        differ = Differ()
+        differ.set_trees(left_tree, right_tree)
+        matches = list(differ.diff())
         return matches
 
     def test_process_1(self):

@@ -19,7 +19,7 @@ class Insert(namedtuple('Insert', ('node', 'value', 'position'))):
         super(Insert, cls).__new__(cls, node, value, position)
 
 
-class Matcher(object):
+class Differ(object):
 
     def __init__(self, F=0.5, uniqueattrs=None):
         # The minimum similarity between two nodes to consider them equal
