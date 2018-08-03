@@ -1,6 +1,7 @@
 from __future__ import division
 
 from collections import namedtuple
+from copy import deepcopy
 from difflib import SequenceMatcher
 from lxml import etree
 
@@ -50,7 +51,8 @@ class Differ(object):
             raise TypeError("The 'left' and 'right' parameters must be "
                             "lxml Elements.")
 
-        self.left = left
+        # Left gets modified as a part of the diff, deepcopy it first.
+        self.left = deepcopy(left)
         self.right = right
 
     def append_match(self, lnode, rnode, max_match):
