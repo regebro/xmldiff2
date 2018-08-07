@@ -18,8 +18,8 @@ install:
   - pip install . coverage coveralls flake8
 
 script:
-  - flake8 xmldiff2 --exclude diff_match_patch.py
-  - coverage run setup.py test
+  - make flake
+  - make coverage
 
 after_success:
   - coveralls
