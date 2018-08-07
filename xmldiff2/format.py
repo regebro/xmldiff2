@@ -1,6 +1,5 @@
 from copy import deepcopy
 from lxml import etree
-from xmldiff2 import diff
 from xmldiff2.diff_match_patch import diff_match_patch
 
 

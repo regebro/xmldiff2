@@ -9,121 +9,121 @@ from xmldiff2.diff import (Differ, UpdateNode, InsertNode, MoveNode,
 from xmldiff2.format import XMLFormatter
 
 
-START = '<document xmlns:diff="http://namespaces.shoobx.com/diff"><node'
-END = '</node></document>'
+START = u'<document xmlns:diff="http://namespaces.shoobx.com/diff"><node'
+END = u'</node></document>'
 
 class TestXMLFormat(unittest.TestCase):
 
     def _format_test(self, left, right, action, expected):
         formatter = XMLFormatter()
         result = formatter.format(etree.fromstring(left), [action])
-        self.assertEqual(etree.tostring(result), expected)
+        self.assertEqual(etree.tounicode(result), expected)
 
     def test_del_attr(self):
 
-        left = '<document><node a="v">Text</node></document>'
-        right = '<document><node>Text</node></document>'
+        left = u'<document><node a="v">Text</node></document>'
+        right = u'<document><node>Text</node></document>'
         action = DeleteAttrib('/document/node', 'a')
-        expected = START + ' diff:delete-attr="a">Text' + END
+        expected = START + u' diff:delete-attr="a">Text' + END
 
         self._format_test(left, right, action, expected)
 
     def test_del_node(self):
 
-        left = '<document><node attr="val">Text</node></document>'
-        right = '<document></document>'
+        left = u'<document><node attr="val">Text</node></document>'
+        right = u'<document></document>'
         action = DeleteNode('/document/node')
-        expected = START + ' attr="val" diff:delete="">Text' + END
+        expected = START + u' attr="val" diff:delete="">Text' + END
 
         self._format_test(left, right, action, expected)
 
     def test_del_text(self):
-        left = '<document><node attr="val">Text</node></document>'
-        right = '<document><node attr="val" /></document>'
+        left = u'<document><node attr="val">Text</node></document>'
+        right = u'<document><node attr="val" /></document>'
         action = UpdateNode('/document/node', None)
-        expected = START + ' attr="val"><diff:delete>Text</diff:delete>' + END
+        expected = START + u' attr="val"><diff:delete>Text</diff:delete>' + END
 
         self._format_test(left, right, action, expected)
 
     def test_insert_attr(self):
-        left = '<document><node>We need more text</node></document>'
-        right = '<document><node attr="val">We need more text</node></document>'
+        left = u'<document><node>We need more text</node></document>'
+        right = u'<document><node attr="val">We need more text</node></document>'
         action = InsertAttrib('/document/node', 'attr', 'val')
-        expected = START + ' attr="val" diff:add-attr="attr">' \
+        expected = START + u' attr="val" diff:add-attr="attr">' \
                    'We need more text' + END
 
         self._format_test(left, right, action, expected)
 
     def test_insert_node(self):
-        left = '<document></document>'
-        right = '<document><node></node></document>'
+        left = u'<document></document>'
+        right = u'<document><node></node></document>'
         action = InsertNode('/document', 'node', 0)
-        expected = START + ' diff:insert=""/></document>'
+        expected = START + u' diff:insert=""/></document>'
 
         self._format_test(left, right, action, expected)
 
     def test_move_attr(self):
         # The library currently only uses move attr for when attributes are
         # renamed:
-        left = '<document><node attr="val">Text</node></document>'
-        right = '<document><node bottr="val">Text</node></document>'
+        left = u'<document><node attr="val">Text</node></document>'
+        right = u'<document><node bottr="val">Text</node></document>'
         action = MoveAttrib('/document/node', '/document/node', 'attr', 'bottr')
-        expected = START + ' bottr="val" diff:rename-attr="attr:bottr"' \
+        expected = START + u' bottr="val" diff:rename-attr="attr:bottr"' \
                   '>Text' + END
 
         self._format_test(left, right, action, expected)
 
         # But it could conceivably be used to move attributes between nodes.
         # So we test that as well:
-        left = '<document><node attr="val"><b>Text</b></node></document>'
-        right = '<document><node><b attr="val">Text</b></node></document>'
+        left = u'<document><node attr="val"><b>Text</b></node></document>'
+        right = u'<document><node><b attr="val">Text</b></node></document>'
         action = MoveAttrib('/document/node', '/document/node/b',
                             'attr', 'attr')
-        expected = START + ' diff:delete-attr="attr"><b attr="val" ' \
+        expected = START + u' diff:delete-attr="attr"><b attr="val" ' \
                    'diff:add-attr="attr">Text</b>' + END
 
         self._format_test(left, right, action, expected)
 
     def test_move_node(self):
         # Move 1 down
-        left = '<document><node id="1" /><node id="2" /></document>'
-        right = '<document><node id="2" /><node id="1" /></document>'
+        left = u'<document><node id="1" /><node id="2" /></document>'
+        right = u'<document><node id="2" /><node id="1" /></document>'
         action = MoveNode('/document/node[1]', '/document', 1)
-        expected = START + ' id="1" diff:delete=""/><node id="2"/><node ' \
+        expected = START + u' id="1" diff:delete=""/><node id="2"/><node ' \
             'id="1" diff:insert=""/></document>'
 
         self._format_test(left, right, action, expected)
 
         # Move 2 up (same result, different diff)
-        left = '<document><node id="1" /><node id="2" /></document>'
-        right = '<document><node id="2" /><node id="1" /></document>'
+        left = u'<document><node id="1" /><node id="2" /></document>'
+        right = u'<document><node id="2" /><node id="1" /></document>'
         action = MoveNode('/document/node[2]', '/document', 0)
-        expected = START + ' id="2" diff:insert=""/><node id="1"/><node ' \
+        expected = START + u' id="2" diff:insert=""/><node id="1"/><node ' \
             'id="2" diff:delete=""/></document>'
 
         self._format_test(left, right, action, expected)
 
     def test_update_attr(self):
-        left = '<document><node attr="val"/></document>'
-        right = '<document><node attr="newval"/></document>'
+        left = u'<document><node attr="val"/></document>'
+        right = u'<document><node attr="newval"/></document>'
         action = UpdateAttrib('/document/node', 'attr', 'newval')
-        expected = START + ' attr="newval" diff:update-attr="attr:val"/>'\
+        expected = START + u' attr="newval" diff:update-attr="attr:val"/>'\
                    '</document>'
 
         self._format_test(left, right, action, expected)
 
     def test_update_node(self):
-        left = '<document><node attr="val"/></document>'
-        right = '<document><node attr="val">Text</node></document>'
+        left = u'<document><node attr="val"/></document>'
+        right = u'<document><node attr="val">Text</node></document>'
         action = UpdateNode('/document/node', 'Text')
-        expected = START + ' attr="val"><diff:insert>Text</diff:insert>' + END
+        expected = START + u' attr="val"><diff:insert>Text</diff:insert>' + END
 
         self._format_test(left, right, action, expected)
 
-        left = '<document><node>This is a bit of text, right</node></document>'
-        right = '<document><node>Also a bit of text, rick</node></document>'
+        left = u'<document><node>This is a bit of text, right</node></document>'
+        right = u'<document><node>Also a bit of text, rick</node></document>'
         action = UpdateNode('/document/node', 'Also a bit of text, rick')
-        expected = START + '><diff:delete>This is</diff:delete><diff:insert>' \
+        expected = START + u'><diff:delete>This is</diff:delete><diff:insert>' \
             'Also</diff:insert> a bit of text, ri<diff:delete>ght' \
             '</diff:delete><diff:insert>ck</diff:insert></node></document>'
 
