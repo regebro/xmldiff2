@@ -1,7 +1,7 @@
 TODO
 ====
 
-First release:
+First Alpha:
 --------------
 
 * 100% coverage, trafis, coveralls, pep8 - Done
@@ -11,11 +11,17 @@ First release:
 * Explicit namespace tests. Since we use lxml all the time this already works
   as by magic, but we need to test for it. - Done
 
-* Support for making a diffed xml with diff:<action> tags.
+* Support for making a diffed xml with diff:<action> tags. - Done
+
+First Beta:
+-----------
+
+* Command line utility
 
 * Support for making a pretty text diff
 
-* Command line utility
+First Final:
+------------
 
 * Documentation
 
@@ -23,6 +29,6 @@ First release:
 Future releases:
 ----------------
 
-* An xmlpatch utility/command that can apply the diffs.
+* An xmlpatch2 utility/command that can apply the diffs.
 
 * Support for the xmldiff diff format.
