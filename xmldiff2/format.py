@@ -18,20 +18,22 @@ class XMLFormatter(object):
 
         for action in diff:
             action_type = '_handle_' + type(action).__name__
-            method = getattr(self, action_type, None)
-            if method is None:
-                raise TypeError("Unknown action: %s" % repr(action))
+            method = getattr(self, action_type)
             method(action, result)
 
         etree.cleanup_namespaces(result, top_nsmap={DIFF_PREFIX: DIFF_NS})
         return result
 
     def _xpath(self, node, xpath):
+        # This method finds an element with xpath and makes sure that
+        # one and exactly one element is found. This is to protect against
+        # formatting a diff on the wrong tree, or against using ambigous
+        # edit script xpaths.
         result = node.xpath(xpath, namespaces=node.nsmap)
         if len(result) == 0:
             raise ValueError('xpath %s not found.' % xpath)
         if len(result) > 1:
-            raise ValueError('Multiple nodes foun for xpath %s.' % xpath)
+            raise ValueError('Multiple nodes found for xpath %s.' % xpath)
         return result[0]
 
     def _extend_diff_attr(self, node, action, value):
@@ -120,23 +122,24 @@ class XMLFormatter(object):
         node = self._xpath(tree, action.node)
         self._update_attrib(node, action.name, action.value)
 
-    def _append_text_node(self, node, action, text):
+    def _insert_text_node(self, node, action, text, pos):
         new_node = node.makeelement('{%s}%s' % (DIFF_NS, action))
         new_node.text = text
-        node.append(new_node)
+        node.insert(pos, new_node)
         return new_node
 
-    def _handle_UpdateNode(self, action, tree):
-        node = self._xpath(tree, action.node)
-        left_value = node.text or ''
-        right_value = action.text or ''
-
+    def _make_diff_tags(self, left_value, right_value, node, target=None):
         text_diff = diff_match_patch()
-        diff = text_diff.diff_main(left_value, right_value)
+        diff = text_diff.diff_main(left_value or '', right_value or '')
         text_diff.diff_cleanupSemantic(diff)
 
-        node.text = None
         cur_child = None
+
+        if target is None:
+            target = node
+            pos = 0
+        else:
+            pos = target.index(node) + 1
 
         for op, text in diff:
             if op == 0:
@@ -145,9 +148,28 @@ class XMLFormatter(object):
                 else:
                     cur_child.tail = text
             elif op == -1:
-                cur_child = self._append_text_node(node, 'delete', text)
+                cur_child = self._insert_text_node(target, 'delete', text, pos)
+                pos += 1
             elif op == 1:
-                cur_child = self._append_text_node(node, 'insert', text)
-            else:
-                raise ValueError(op)
+                cur_child = self._insert_text_node(target, 'insert', text, pos)
+                pos += 1
+
+    def _handle_UpdateTextIn(self, action, tree):
+        node = self._xpath(tree, action.node)
+        left_value = node.text
+        right_value = action.text
+        node.text = None
+
+        self._make_diff_tags(left_value, right_value, node)
+
+        return node
+
+    def _handle_UpdateTextAfter(self, action, tree):
+        node = self._xpath(tree, action.node)
+        left_value = node.tail
+        right_value = action.text
+        node.tail = None
+
+        self._make_diff_tags(left_value, right_value, node, node.getparent())
+
         return node

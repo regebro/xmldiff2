@@ -4,9 +4,9 @@ import unittest
 from io import open
 from lxml import etree
 from xmldiff2.utils import post_order_traverse, breadth_first_traverse
-from xmldiff2.diff import (Differ, UpdateNode, InsertNode, MoveNode,
+from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
-                           DeleteAttrib)
+                           DeleteAttrib, UpdateTextAfter)
 
 
 class TestAPI(unittest.TestCase):
@@ -597,7 +597,8 @@ class TestMatcherUpdateNode(unittest.TestCase):
         matches = differ.match()
         steps = []
         for left, right, m in matches:
-            steps.extend(differ.update_node(left, right))
+            steps.extend(differ.update_node_attr(left, right))
+            steps.extend(differ.update_node_text(left, right))
 
         return steps
 
@@ -630,12 +631,12 @@ class TestMatcherUpdateNode(unittest.TestCase):
         self.assertEqual(
             result,
             [
-                UpdateNode('/root/node', 'The new text'),
-                UpdateNode('/root', 'Also a tail!'),
                 UpdateAttrib('/root/node', 'attr2', 'uhhuh'),
                 MoveAttrib('/root/node', '/root/node', 'attr1', 'attr4'),
                 InsertAttrib('/root/node', 'attr5', 'new'),
                 DeleteAttrib('/root/node', 'attr0'),
+                UpdateTextIn('/root/node', 'The new text'),
+                UpdateTextAfter('/root/node', 'Also a tail!'),
             ]
         )
 
@@ -777,7 +778,7 @@ class TestMatcherDiff(unittest.TestCase):
              MoveNode('/document/story/section[1]/para[3]',
                       '/document/story/section[2]', 0),
              InsertNode('/document/story/section[2]', 'para', 0),
-             UpdateNode('/document/story/section[2]/para[1]',
+             UpdateTextIn('/document/story/section[2]/para[1]',
                         'Fourth paragraph'),
              DeleteNode('/document/story/deleteme/para'),
              DeleteNode('/document/story/deleteme'),
@@ -837,9 +838,6 @@ class TestMatcherDiff(unittest.TestCase):
              UpdateAttrib('/document/story/app:section[12]', 'single-ref', '11'),
              UpdateAttrib('/document/story/app:section[14]', 'ref', '12'),
              UpdateAttrib('/document/story/app:section[14]', 'single-ref', '12'),
-             UpdateNode(
-              '/document/story/app:section[1]/para[2]/app:placeholder',
-              'Second Name'),
              InsertNode(
               '/document/story/app:section[4]',
               '{http://namespaces.shoobx.com/application}term',
@@ -848,15 +846,11 @@ class TestMatcherDiff(unittest.TestCase):
               '/document/story/app:section[4]/app:term', 'name',
               'sign_bonus'),
              InsertAttrib('/document/story/app:section[4]/app:term', 'set', 'ol'),
-             InsertNode('/document/story/app:section[4]', 'para', 0),
+             InsertNode('/document/story/app:section[4]', 'para', 1),
              InsertNode(
               '/document/story/app:section[4]/para',
               '{http://namespaces.shoobx.com/application}ref',
               0),
-             UpdateNode(
-              '/document/story/app:section[4]/para/app:ref',
-              '3'),
-             UpdateNode('/document/story/app:section[4]/para', '. '),
              InsertAttrib(
               '/document/story/app:section[4]/para/app:ref', 'name',
               'sign'),
@@ -864,21 +858,11 @@ class TestMatcherDiff(unittest.TestCase):
               '/document/story/app:section[4]/para/app:ref',
               '{http://namespaces.shoobx.com/preview}body',
               '<Ref>'),
-             InsertNode('/document/story/app:section[4]/para', 'u', 0),
-             UpdateNode(
-              '/document/story/app:section[4]/para',
-              '.\n              You will also be paid a '),
+             InsertNode('/document/story/app:section[4]/para', 'u', 1),
              InsertNode(
               '/document/story/app:section[4]/para',
               '{http://namespaces.shoobx.com/application}placeholder',
-              0),
-             UpdateNode(
-              '/document/story/app:section[4]/para',
-              (' signing\n              bonus, which will be paid on the ' +
-               'next regularly scheduled pay date\n              after ' +
-               'you start employment with the Company.\n              \n' +
-               '            ')
-              ),
+              2),
              InsertAttrib(
               '/document/story/app:section[4]/para/app:placeholder', 'field',
               'ol.sign_bonus_include_amt'),
@@ -886,31 +870,48 @@ class TestMatcherDiff(unittest.TestCase):
               '/document/story/app:section[4]/para/app:placeholder', 'missing',
               'Signing Bonus Amount'),
              InsertNode('/document/story/app:section[4]/para/u', 'b', 0),
-             UpdateNode(
-              '/document/story/app:section[4]/para/u/b',
-              'Signing Bonus'),
-             UpdateNode(
+             UpdateTextIn(
+                 '/document/story/app:section[1]/para[2]/app:placeholder',
+                 'Second Name'),
+             UpdateTextIn(
+                 '/document/story/app:section[4]/para/app:ref', '3'),
+             UpdateTextAfter(
+                 '/document/story/app:section[4]/para/app:ref', '. '),
+             UpdateTextIn(
+                 '/document/story/app:section[4]/para/u/b',
+                 'Signing Bonus'),
+             UpdateTextAfter(
+                 '/document/story/app:section[4]/para/u',
+                 '.\n              You will also be paid a '),
+             UpdateTextAfter(
+                 '/document/story/app:section[4]/para/app:placeholder',
+                 (' signing\n              bonus, which will be paid on the ' +
+                  'next regularly scheduled pay date\n              after ' +
+                  'you start employment with the Company.\n              \n' +
+                  '            ')
+                 ),
+             UpdateTextIn(
               '/document/story/app:section[5]/para/app:ref',
               '4'),
-             UpdateNode(
+             UpdateTextIn(
               '/document/story/app:section[6]/para/app:ref',
               '5'),
-             UpdateNode(
+             UpdateTextIn(
               '/document/story/app:section[7]/para/app:ref',
               '6'),
-             UpdateNode(
+             UpdateTextIn(
               '/document/story/app:section[8]/para/app:ref',
               '7'),
-             UpdateNode(
+             UpdateTextIn(
               '/document/story/app:section[9]/para/app:ref',
               '8'),
-             UpdateNode(
+             UpdateTextIn(
               '/document/story/app:section[10]/para/app:ref',
               '9'),
-             UpdateNode(
+             UpdateTextIn(
               '/document/story/app:section[11]/para/app:ref',
               '10'),
-             UpdateNode(
+             UpdateTextIn(
               '/document/story/app:section[12]/para/app:ref',
               '11')
             ]
@@ -967,14 +968,14 @@ class TestMatcherDiff(unittest.TestCase):
         self.assertEqual(
             result,
             [InsertNode('/document/story/app:section', '{someuri}para', 0),
-             UpdateNode(
+             InsertAttrib('/document/story/app:section/app:para[3]',
+                          '{someuri}attrib', 'value'),
+             UpdateTextIn(
                  '/document/story/app:section/app:para[1]',
                  'Lorem ipsum dolor sit amet,\n                consectetur '
                  'adipiscing elit. Pellentesque feugiat metus quam.\n'
                  '                Suspendisse potenti. Vestibulum quis '
                  'ornare felis,\n                ac elementum sem.'),
-             InsertAttrib('/document/story/app:section/app:para[3]',
-                          '{someuri}attrib', 'value'),
              DeleteNode('/document/story/app:section/foo:para'),
             ]
         )

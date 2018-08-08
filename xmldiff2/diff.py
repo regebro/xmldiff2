@@ -9,10 +9,12 @@ from xmldiff2 import utils
 
 
 # Update, Move, Delete and Insert are the edit script actions:
-UpdateNode = namedtuple('UpdateNode', 'node text')
 DeleteNode = namedtuple('DeleteNode', 'node')
 InsertNode = namedtuple('InsertNode', 'target tag position')
 MoveNode = namedtuple('MoveNode', 'source target position')
+
+UpdateTextIn = namedtuple('UpdateTextIn', 'node text')
+UpdateTextAfter = namedtuple('UpdateTextAfter', 'node text')
 
 UpdateAttrib = namedtuple('UpdateAttrib', 'node name value')
 DeleteAttrib = namedtuple('DeleteAttrib', 'node name')
@@ -181,18 +183,9 @@ class Differ(object):
 
         return count / child_count
 
-    def update_node(self, left, right):
+    def update_node_attr(self, left, right):
         left_xpath = left.getroottree().getpath(left)
         right_xpath = right.getroottree().getpath(right)
-
-        if left.text != right.text:
-            yield UpdateNode(left_xpath, right.text)
-            left.text = right.text
-
-        if left.tail != right.tail:
-            xpath = left.getroottree().getpath(left.getparent())
-            yield UpdateNode(xpath, right.tail)
-            left.tail = right.tail
 
         # Update: Look for differences in attributes
 
@@ -240,6 +233,19 @@ class Differ(object):
                 continue
             yield DeleteAttrib(left_xpath, key)
             del left.attrib[key]
+
+    def update_node_text(self, left, right):
+        left_xpath = left.getroottree().getpath(left)
+
+        # Lastly, do the differences in texts. This inserts nodes
+        # when making an XML diff, so it's best to have this last.
+        if left.text != right.text:
+            yield UpdateTextIn(left_xpath, right.text)
+            left.text = right.text
+
+        if left.tail != right.tail:
+            yield UpdateTextAfter(left_xpath, right.tail)
+            left.tail = right.tail
 
     def find_pos(self, child):
         parent = child.getparent()
@@ -328,10 +334,12 @@ class Differ(object):
                 lnode = ltarget.makeelement(rnode.tag)
                 self.append_match(lnode, rnode, 1.0)
                 ltarget.insert(pos, lnode)
-                # And then we add attributes and contents with an update.
-                # This is different from the paper, because the paper
-                # assumes nodes only has labels and values
-                for action in self.update_node(lnode, rnode):
+                self._inorder.add(lnode)
+                self._inorder.add(rnode)
+                # And then we update attributes. This is different from the
+                # paper, because the paper assumes nodes only has labels and
+                # values. Nodes also has texts, we do them later.
+                for action in self.update_node_attr(lnode, rnode):
                     yield action
 
             # (c)
@@ -346,7 +354,7 @@ class Differ(object):
                 # (ii) Update
                 # XXX If they are exactly equal, we can skip this,
                 # maybe store match results in a cache?
-                for action in self.update_node(lnode, rnode):
+                for action in self.update_node_attr(lnode, rnode):
                     yield action
 
                 # (iii) Move
@@ -370,3 +378,11 @@ class Differ(object):
                 # No match
                 yield DeleteNode(ltree.getpath(lnode))
                 lnode.getparent().remove(lnode)
+            else:
+                # And lastly, we update all node texts. We do this after
+                # aligning children, because when you generate an XML diff
+                # from this, that XML diff generates more children, confusing
+                # later inserts or deletes.
+                rnode = self._l2rmap[id(lnode)]
+                for action in self.update_node_text(lnode, rnode):
+                    yield action

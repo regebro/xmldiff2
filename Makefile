@@ -11,6 +11,7 @@ flake:
 
 coverage:
 	coverage run setup.py test
+	coverage html
 
 test:
 	python setup.py test
