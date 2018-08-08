@@ -1,4 +1,5 @@
 import os
+import re
 import unittest
 
 from io import open
@@ -143,6 +144,69 @@ class TestXMLFormat(unittest.TestCase):
             '</diff:delete><diff:insert>ck</diff:insert></document>'
 
         self._format_test(left, action, expected)
+
+
+class TestXMLFormatIntegration(unittest.TestCase):
+
+    def no_test_match_complex_text(self):
+        left = """<wrap id="1533728456.41"><para>
+            Consultant shall not indemnify and hold Company, its
+            affiliates and their respective directors,
+            officers, agents and employees harmless from and
+            against all claims, demands, losses, damages and
+            judgments, including court costs and attorneys'
+            fees, arising out of or based upon (a) any claim
+            that the Services provided hereunder or, any
+            related Intellectual Property Rights or the
+            exercise of any rights in or to any Company-Related
+            Development or Pre-Existing Development or related
+            Intellectual Property Rights infringe on,
+            constitute a misappropriation of the subject matter
+            of, or otherwise violate any patent, copyright,
+            trade secret, trademark or other proprietary right
+            of any person or breaches any person's contractual
+            rights; This is strange, but <b>true</b>.
+            </para></wrap>"""
+        left = re.sub(u'\s+', u' ', left, flags=re.MULTILINE)
+
+        right = """<wrap id="1533728456.41"><para>
+
+            Consultant <i>shall not</i> indemnify and hold
+            Company, its affiliates and their respective
+            directors, officers, agents and employees harmless
+            from and against all claims, demands, losses,
+            excluding court costs and attorneys' fees, arising
+            out of or based upon (a) any claim that the
+            Services provided hereunder or, any related
+            Intellectual Property Rights or the exercise of any
+            rights in or to any Company-Related Development or
+            Pre-Existing Development or related Intellectual
+            Property Rights infringe on, constitute a
+            misappropriation of the subject matter of, or
+            otherwise violate any patent, copyright, trade
+            secret, trademark or other proprietary right of any
+            person or breaches any person's contractual rights;
+            This is very strange, but <b>true</b>.
+
+            </para></wrap>"""
+        right = re.sub(u'\s+', u' ', right, flags=re.MULTILINE)
+
+        expected = ''
+
+        parser = etree.XMLParser(remove_blank_text=True)
+        left_tree = etree.XML(left, parser)
+        right_tree = etree.XML(right, parser)
+        differ = Differ()
+        diff = list(differ.diff(left_tree, right_tree))
+        formatter = XMLFormatter()
+        result = formatter.format(etree.fromstring(left), diff)
+        res = etree.tounicode(result, pretty_print=True)
+
+        # We need to strip() them, because some editors mess up the newlines
+        # of the last lines.
+        self.maxDiff = None
+
+        self.assertEqual(res.strip(), expected.strip())
 
 
 class FormatFileTest(unittest.TestCase):
