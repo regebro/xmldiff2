@@ -798,8 +798,8 @@ class TestMatcherDiff(unittest.TestCase):
 
     def test_rmldoc(self):
         here = os.path.split(__file__)[0]
-        lfile = os.path.join(here, 'data', 'rmldoc_left.xml')
-        rfile = os.path.join(here, 'data', 'rmldoc_right.xml')
+        lfile = os.path.join(here, 'test_diff_data', 'rmldoc_left.xml')
+        rfile = os.path.join(here, 'test_diff_data', 'rmldoc_right.xml')
         with open(lfile, 'rt', encoding='utf8') as l:
             left = l.read()
         with open(rfile, 'rt', encoding='utf8') as r:

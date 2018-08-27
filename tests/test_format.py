@@ -8,9 +8,11 @@ from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteAttrib, UpdateTextAfter)
 from xmldiff2.format import XMLFormatter
 
+from .utils import make_test_function, generate_filebased_tests
 
 START = u'<document xmlns:diff="http://namespaces.shoobx.com/diff"><node'
 END = u'</node></document>'
+
 
 class TestXMLFormat(unittest.TestCase):
 
@@ -142,31 +144,19 @@ class TestXMLFormat(unittest.TestCase):
 
         self._format_test(left, action, expected)
 
-    def test_rmldoc_format(self):
-        here = os.path.split(__file__)[0]
-        lfile = os.path.join(here, 'data', 'rmldoc_left.xml')
-        rfile = os.path.join(here, 'data', 'rmldoc_right.xml')
-        efile = os.path.join(here, 'data', 'rmldoc_expected.xml')
-        with open(lfile, 'rt', encoding='utf8') as l:
-            left = l.read()
-        with open(rfile, 'rt', encoding='utf8') as r:
-            right = r.read()
-        with open(efile, 'rt', encoding='utf8') as e:
-            expected = e.read()
 
+class FormatFileTest(unittest.TestCase):
+
+    def process(self, left_xml, right_xml):
         parser = etree.XMLParser(remove_blank_text=True)
-        left_tree = etree.XML(left, parser)
-        right_tree = etree.XML(right, parser)
+        left_tree = etree.XML(left_xml, parser)
+        right_tree = etree.XML(right_xml, parser)
         differ = Differ()
         diff = differ.diff(left_tree, right_tree)
         formatter = XMLFormatter()
-        result = formatter.format(etree.fromstring(left), diff)
-        res = etree.tounicode(result, pretty_print=True)
+        return etree.tounicode(formatter.format(etree.fromstring(left_xml), diff))
 
-        with open(efile, 'wt', encoding='utf8') as e:
-            e.write(res)
-        # We need to strip() them, because some editors mess up the newlines
-        # of the last lines.
-        self.maxDiff = None
 
-        self.assertEqual(res.strip(), expected.strip())
+data_dir = os.path.join(
+    os.path.dirname(__file__), __name__.split('.')[-1]+'_data')
+generate_filebased_tests(data_dir, FormatFileTest)
