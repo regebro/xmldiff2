@@ -1,6 +1,7 @@
 from copy import deepcopy
 from lxml import etree
 from xmldiff2.diff_match_patch import diff_match_patch
+from xmldiff2.diff import UpdateTextIn, UpdateTextAfter
 
 
 DIFF_NS = 'http://namespaces.shoobx.com/diff'
@@ -16,13 +17,24 @@ class XMLFormatter(object):
         result = deepcopy(orig_tree)
         etree.register_namespace(DIFF_PREFIX, DIFF_NS)
 
+        deferred = []
         for action in diff:
-            action_type = '_handle_' + type(action).__name__
-            method = getattr(self, action_type)
-            method(action, result)
+            if isinstance(action, (UpdateTextIn, UpdateTextAfter)):
+                # We need to do text updates last
+                deferred.append(action)
+                continue
+            self.handle_action(action, result)
+
+        for action in reversed(deferred):
+            self.handle_action(action, result)
 
         etree.cleanup_namespaces(result, top_nsmap={DIFF_PREFIX: DIFF_NS})
         return result
+
+    def handle_action(self, action, result):
+        action_type = type(action)
+        method = getattr(self, '_handle_' + action_type.__name__)
+        method(action, result)
 
     def _xpath(self, node, xpath):
         # This method finds an element with xpath and makes sure that

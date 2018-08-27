@@ -106,12 +106,15 @@ class TestNodeRatios(unittest.TestCase):
         differ.set_trees(tree, tree)
         differ.match()
 
-        # Every node in these trees should get a 1.0 comparison from
-        # both comparisons.
+        # Every node in these trees should get a 1.0 leaf_ratio,
+        # and if it has children, 1.0 child_ration, else None
         for left, right in zip(post_order_traverse(differ.left),
                                post_order_traverse(differ.right)):
             self.assertEqual(differ.leaf_ratio(left, right), 1.0)
-            self.assertEqual(differ.child_ratio(left, right), 1.0)
+            if left.getchildren():
+                self.assertEqual(differ.child_ratio(left, right), 1.0)
+            else:
+                self.assertIsNone(differ.child_ratio(left, right))
 
 
     def test_compare_different_leafs(self):
@@ -161,13 +164,13 @@ class TestNodeRatios(unittest.TestCase):
         right = righttree.xpath('/document/story/section[2]/para')[0]
 
         self.assertAlmostEqual(differ.leaf_ratio(left, right),
-                               0.7058823529411765)
+                               0.6875)
 
         # These nodes should not be very similar
         left = lefttree.xpath('/document/story/section[1]/para')[0]
         right = righttree.xpath('/document/story/section[1]/para')[0]
         self.assertAlmostEqual(differ.leaf_ratio(left, right),
-                               0.2692307692307692)
+                               0.24)
 
 
     def test_compare_different_nodes(self):
@@ -294,7 +297,7 @@ class TestNodeRatios(unittest.TestCase):
         self.assertEqual(differ.child_ratio(left, right), 1.0)
 
 
-class TestMatcherMatch(unittest.TestCase):
+class TestMatch(unittest.TestCase):
 
     def _match(self, left, right):
         left_tree = etree.fromstring(left)
@@ -374,70 +377,6 @@ class TestMatcherMatch(unittest.TestCase):
              '/document/story'),
             ('/document',
              '/document')
-        ])
-
-    def test_no_xmlid_miss(self):
-        # Here we insert a section first, but because they contain numbering
-        # it's easy to match section 1 in left with section 2 in right,
-        # though it should be detected as an insert.
-
-        left = u"""<document>
-    <story firstPageTemplate="FirstPage">
-        <section ref="3" single-ref="3"
-                 description="This is to trick the differ">
-            <para>First paragraph</para>
-        </section>
-        <section ref="4" single-ref="4">
-            <para>Second paragraph</para>
-        </section>
-        <section ref="5" single-ref="5">
-            <para>Last paragraph</para>
-        </section>
-    </story>
-</document>
-"""
-
-        # This first section contains attributes that are similar and longer
-        # than the content text. This tricks the matcher so we don't get a
-        # match between old section 1 and new section 2.
-        # We also do not get a match between old section 1 and new section 1,
-        # as they have no matching children. So this will generate a lot
-        # of updates and inserts, and not look good.
-        right = u"""<document>
-    <story firstPageTemplate="FirstPage">
-        <section ref="3" single-ref="3"
-                 description="This is to trick the differ">
-            <para>New paragraph</para>
-        </section>
-        <section ref="4" single-ref="4">
-            <para>First paragraph</para>
-        </section>
-        <section ref="5" single-ref="5">
-            <para>Second paragraph</para>
-        </section>
-        <section ref="6" single-ref="6">
-            <para>Last paragraph</para>
-        </section>
-    </story>
-</document>
-"""
-
-        result = self._match(left, right)
-        self.assertEqual(result, [
-            ('/document/story/section[1]/para',
-             '/document/story/section[2]/para'),
-            ('/document/story/section[2]/para',
-             '/document/story/section[3]/para'),
-            ('/document/story/section[2]',
-             '/document/story/section[3]'),
-            ('/document/story/section[3]/para',
-             '/document/story/section[4]/para'),
-            ('/document/story/section[3]',
-             '/document/story/section[4]'),
-            ('/document/story',
-             '/document/story'),
-            ('/document',
-             '/document'),
         ])
 
     def test_with_xmlid(self):
@@ -585,8 +524,56 @@ class TestMatcherMatch(unittest.TestCase):
             ('/document', '/document')
         ])
 
+    def test_match_complex_text(self):
+        left = """<wrap id="1533728456.41"><para>
+            Consultant shall not indemnify and hold Company, its
+            affiliates and their respective directors,
+            officers, agents and employees harmless from and
+            against all claims, demands, losses, damages and
+            judgments, including court costs and attorneys'
+            fees, arising out of or based upon (a) any claim
+            that the Services provided hereunder or, any
+            related Intellectual Property Rights or the
+            exercise of any rights in or to any Company-Related
+            Development or Pre-Existing Development or related
+            Intellectual Property Rights infringe on,
+            constitute a misappropriation of the subject matter
+            of, or otherwise violate any patent, copyright,
+            trade secret, trademark or other proprietary right
+            of any person or breaches any person's contractual
+            rights; This is strange, but <b>true</b>.
+            </para></wrap>"""
 
-class TestMatcherUpdateNode(unittest.TestCase):
+        right = """<wrap id="1533728456.41"><para>
+
+            Consultant <i>shall not</i> indemnify and hold
+            Company, its affiliates and their respective
+            directors, officers, agents and employees harmless
+            from and against all claims, demands, losses,
+            excluding court costs and attorneys' fees, arising
+            out of or based upon (a) any claim that the
+            Services provided hereunder or, any related
+            Intellectual Property Rights or the exercise of any
+            rights in or to any Company-Related Development or
+            Pre-Existing Development or related Intellectual
+            Property Rights infringe on, constitute a
+            misappropriation of the subject matter of, or
+            otherwise violate any patent, copyright, trade
+            secret, trademark or other proprietary right of any
+            person or breaches any person's contractual rights;
+            This is very strange, but <b>true</b>.
+
+            </para></wrap>"""
+
+        result = self._match(left, right)
+        self.assertEqual(result, [
+            ('/wrap/para/b', '/wrap/para/b'),
+            ('/wrap/para', '/wrap/para'),
+            ('/wrap', '/wrap')
+        ])
+
+
+class TestUpdateNode(unittest.TestCase):
     """Testing only the update phase of the diffing"""
 
     def _match(self, left, right):
@@ -641,7 +628,7 @@ class TestMatcherUpdateNode(unittest.TestCase):
         )
 
 
-class TestMatcherAlignChildren(unittest.TestCase):
+class TestAlignChildren(unittest.TestCase):
     """Testing only the align phase of the diffing"""
 
     def _align(self, left, right):
@@ -729,7 +716,7 @@ class TestMatcherAlignChildren(unittest.TestCase):
                                    '/document/story/section', 2)])
 
 
-class TestMatcherDiff(unittest.TestCase):
+class TestDiff(unittest.TestCase):
     """Testing only the align phase of the diffing"""
 
     def _diff(self, left, right):
@@ -796,6 +783,18 @@ class TestMatcherDiff(unittest.TestCase):
             ]
         )
 
+    def test_no_root_match(self):
+        left = '<root attr="val"><n><p>1</p><p>2</p><p>3</p></n><n><p>4</p></n></root>'
+        right = '<root><n><p>2</p><p>4</p></n><n><p>1</p><p>3</p></n></root>'
+        result = self._diff(left, right)
+        self.assertEqual(
+            result,
+            [DeleteAttrib(node='/root', name='attr'),
+             MoveNode('/root/n[1]', '/root', 1),
+             MoveNode('/root/n[2]/p[2]', '/root/n[1]', 0),
+            ]
+        )
+
     def test_rmldoc(self):
         here = os.path.split(__file__)[0]
         lfile = os.path.join(here, 'test_diff_data', 'rmldoc_left.xml')
@@ -838,6 +837,9 @@ class TestMatcherDiff(unittest.TestCase):
              UpdateAttrib('/document/story/app:section[12]', 'single-ref', '11'),
              UpdateAttrib('/document/story/app:section[14]', 'ref', '12'),
              UpdateAttrib('/document/story/app:section[14]', 'single-ref', '12'),
+             UpdateTextIn(
+                 '/document/story/app:section[1]/para[2]/app:placeholder',
+                 'Second Name'),
              InsertNode(
               '/document/story/app:section[4]',
               '{http://namespaces.shoobx.com/application}term',
@@ -855,10 +857,17 @@ class TestMatcherDiff(unittest.TestCase):
               '/document/story/app:section[4]/para/app:ref', 'name',
               'sign'),
              InsertAttrib(
-              '/document/story/app:section[4]/para/app:ref',
-              '{http://namespaces.shoobx.com/preview}body',
-              '<Ref>'),
+                 '/document/story/app:section[4]/para/app:ref',
+                 '{http://namespaces.shoobx.com/preview}body',
+                 '<Ref>'),
+             UpdateTextIn(
+                 '/document/story/app:section[4]/para/app:ref', '3'),
+             UpdateTextAfter(
+                 '/document/story/app:section[4]/para/app:ref', '. '),
              InsertNode('/document/story/app:section[4]/para', 'u', 1),
+             UpdateTextAfter(
+                 '/document/story/app:section[4]/para/u',
+                 '.\n              You will also be paid a '),
              InsertNode(
               '/document/story/app:section[4]/para',
               '{http://namespaces.shoobx.com/application}placeholder',
@@ -869,20 +878,6 @@ class TestMatcherDiff(unittest.TestCase):
              InsertAttrib(
               '/document/story/app:section[4]/para/app:placeholder', 'missing',
               'Signing Bonus Amount'),
-             InsertNode('/document/story/app:section[4]/para/u', 'b', 0),
-             UpdateTextIn(
-                 '/document/story/app:section[1]/para[2]/app:placeholder',
-                 'Second Name'),
-             UpdateTextIn(
-                 '/document/story/app:section[4]/para/app:ref', '3'),
-             UpdateTextAfter(
-                 '/document/story/app:section[4]/para/app:ref', '. '),
-             UpdateTextIn(
-                 '/document/story/app:section[4]/para/u/b',
-                 'Signing Bonus'),
-             UpdateTextAfter(
-                 '/document/story/app:section[4]/para/u',
-                 '.\n              You will also be paid a '),
              UpdateTextAfter(
                  '/document/story/app:section[4]/para/app:placeholder',
                  (' signing\n              bonus, which will be paid on the ' +
@@ -890,6 +885,10 @@ class TestMatcherDiff(unittest.TestCase):
                   'you start employment with the Company.\n              \n' +
                   '            ')
                  ),
+             InsertNode('/document/story/app:section[4]/para/u', 'b', 0),
+             UpdateTextIn(
+                 '/document/story/app:section[4]/para/u/b',
+                 'Signing Bonus'),
              UpdateTextIn(
               '/document/story/app:section[5]/para/app:ref',
               '4'),
@@ -968,14 +967,19 @@ class TestMatcherDiff(unittest.TestCase):
         self.assertEqual(
             result,
             [InsertNode('/document/story/app:section', '{someuri}para', 0),
-             InsertAttrib('/document/story/app:section/app:para[3]',
-                          '{someuri}attrib', 'value'),
              UpdateTextIn(
                  '/document/story/app:section/app:para[1]',
                  'Lorem ipsum dolor sit amet,\n                consectetur '
                  'adipiscing elit. Pellentesque feugiat metus quam.\n'
                  '                Suspendisse potenti. Vestibulum quis '
                  'ornare felis,\n                ac elementum sem.'),
+             InsertAttrib('/document/story/app:section/app:para[3]',
+                          '{someuri}attrib', 'value'),
              DeleteNode('/document/story/app:section/foo:para'),
             ]
         )
+
+    def test_textdiff(self):
+        left = u"""<root><node>The contained text</node>And a tail</root>"""
+        right = u"""<root><node>The contained text!</node>And a tail!</root>"""
+        result = self._diff(left, right)

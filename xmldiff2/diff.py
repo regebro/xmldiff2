@@ -1,10 +1,11 @@
 from __future__ import division
 
+import re
+
 from collections import namedtuple
 from copy import deepcopy
 from difflib import SequenceMatcher
 from lxml import etree
-
 from xmldiff2 import utils
 
 
@@ -63,6 +64,16 @@ class Differ(object):
         self._r2lmap[id(rnode)] = lnode
 
     def match(self, left=None, right=None):
+        # This is not a generator, because the diff() functions needs
+        # _l2rmap and _r2lmap, so if match() was a generator, then
+        # diff() would have to first do list(self.match()) without storing
+        # the result, and that would be silly.
+
+        # Nothing in this library is actually using the resulting list of
+        # matches match() returns, but it may be useful for somebody that
+        # actually do not want a diff, but only a list of matches.
+        # It also makes testing the match function easier.
+
         if left is not None or right is not None:
             self.set_trees(left, right)
 
@@ -70,13 +81,14 @@ class Differ(object):
             # We already matched these sequences, use the cache
             return self._matches
 
-        # Make sure the caches are cleared:
+        # Initialize the caches:
         self._matches = []
         self._l2rmap = {}
         self._r2lmap = {}
         self._inorder = set()
 
-        # Let's first just do the naive slow matchings
+        # Let's just do the naive slow matchings, we can implement
+        # FastMatch later
         lroot = self.left.getroottree()
         lnodes = utils.post_order_traverse(self.left)
 
@@ -86,9 +98,12 @@ class Differ(object):
         for lnode in lnodes:
             max_match = 0
             match_node = None
+
             for rnode in rnodes:
-                match = (self.leaf_ratio(lnode, rnode) *
-                         self.child_ratio(lnode, rnode))
+                match = self.leaf_ratio(lnode, rnode)
+                child_ratio = self.child_ratio(lnode, rnode)
+                if child_ratio is not None:
+                    match = (match + child_ratio) / 2
                 if match > max_match:
                     match_node = rnode
                     max_match = match
@@ -100,7 +115,7 @@ class Differ(object):
                     # This is a complete match, break here
                     break
 
-            if max_match >= self.F:
+            if max_match > self.F:
                 self.append_match(lnode, match_node, max_match)
 
             # We don't want to check nodes that already are matched
@@ -119,18 +134,13 @@ class Differ(object):
         return self._matches
 
     def node_text(self, node):
-        texts = []
+        texts = node.xpath('text()')
 
         for each in sorted(node.attrib.items()):
             texts.append(':'.join(each))
-        for each in sorted(node.nsmap.items()):
-            texts.append(':'.join(each))
-        if node.text:
-            texts.append(node.text.strip())
-        if node.tail:
-            texts.append(node.tail.strip())
 
-        return ' '.join(texts)
+        text = u' '.join(texts).strip()
+        return re.sub(u'\s+', u' ', text, flags=re.MULTILINE)
 
     def leaf_ratio(self, left, right):
         # How similar two nodes are, with no consideration of their children
@@ -162,8 +172,9 @@ class Differ(object):
 
         # We use a simple ratio here, I tried Levenshtein distances
         # but that took a 100 times longer.
-        self._sequencematcher.set_seqs(self.node_text(left),
-                                       self.node_text(right))
+        ltext = self.node_text(left)
+        rtext = self.node_text(right)
+        self._sequencematcher.set_seqs(ltext, rtext)
         return self._sequencematcher.ratio()
 
     def child_ratio(self, left, right):
@@ -171,7 +182,7 @@ class Differ(object):
         left_children = left.getchildren()
         right_children = right.getchildren()
         if not left_children and not right_children:
-            return 1
+            return None
         count = 0
         child_count = max((len(left_children), len(right_children)))
         for lchild in left_children:
@@ -312,10 +323,12 @@ class Differ(object):
 
     def diff(self, left=None, right=None):
         # Make sure the matching is done first, diff() needs the l2r/r2l maps.
-        self.match(left, right)
+        if not self._matches:
+            self.match(left, right)
 
         # The paper talks about the five phases, and then does four of them
-        # in one phase, in a different order that described. Ah well.
+        # in one phase, in a different order that described. This
+        # implementation in turn differs in order yet again.
         ltree = self.left.getroottree()
         rtree = self.right.getroottree()
 
@@ -373,16 +386,16 @@ class Differ(object):
             for action in self.align_children(lnode, rnode):
                 yield action
 
+            # And lastly, we update all node texts. We do this after
+            # aligning children, because when you generate an XML diff
+            # from this, that XML diff update generates more children,
+            # confusing later inserts or deletes.
+            lnode = self._r2lmap[id(rnode)]
+            for action in self.update_node_text(lnode, rnode):
+                yield action
+
         for lnode in utils.post_order_traverse(self.left):
             if id(lnode) not in self._l2rmap:
                 # No match
                 yield DeleteNode(ltree.getpath(lnode))
                 lnode.getparent().remove(lnode)
-            else:
-                # And lastly, we update all node texts. We do this after
-                # aligning children, because when you generate an XML diff
-                # from this, that XML diff generates more children, confusing
-                # later inserts or deletes.
-                rnode = self._l2rmap[id(lnode)]
-                for action in self.update_node_text(lnode, rnode):
-                    yield action
