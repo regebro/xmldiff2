@@ -7,7 +7,7 @@ from lxml import etree
 from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
                            DeleteAttrib, UpdateTextAfter)
-from xmldiff2.format import XMLFormatter
+from xmldiff2.format import XMLFormatter, RMLFormatter
 
 from .utils import make_test_function, generate_filebased_tests
 
@@ -194,8 +194,8 @@ class TestXMLFormatIntegration(unittest.TestCase):
         expected = ''
 
         parser = etree.XMLParser(remove_blank_text=True)
-        left_tree = etree.XML(left, parser)
-        right_tree = etree.XML(right, parser)
+        left_tree = etree.fromstring(left, parser)
+        right_tree = etree.fromstring(right, parser)
         differ = Differ()
         diff = list(differ.diff(left_tree, right_tree))
         formatter = XMLFormatter()
@@ -211,16 +211,39 @@ class TestXMLFormatIntegration(unittest.TestCase):
 
 class FormatFileTest(unittest.TestCase):
 
+    formatter = None  # Override this
+
     def process(self, left_xml, right_xml):
         parser = etree.XMLParser(remove_blank_text=True)
-        left_tree = etree.XML(left_xml, parser)
-        right_tree = etree.XML(right_xml, parser)
+        left_tree = etree.fromstring(left_xml, parser)
+        right_tree = etree.fromstring(right_xml, parser)
         differ = Differ()
+        formatter = self.formatter()
+        formatter.prepare(left_tree, right_tree)
         diff = differ.diff(left_tree, right_tree)
-        formatter = XMLFormatter()
-        return etree.tounicode(formatter.format(etree.fromstring(left_xml), diff))
+        res = formatter.format(etree.fromstring(left_xml), diff)
+        return etree.tounicode(res, pretty_print=True)
 
 
-data_dir = os.path.join(
-    os.path.dirname(__file__), __name__.split('.')[-1]+'_data')
-generate_filebased_tests(data_dir, FormatFileTest)
+class XMLFormatFileTest(FormatFileTest):
+
+    formatter = XMLFormatter
+
+
+class PlaceholderFormatFileTest(FormatFileTest):
+
+    # We use the RMLFormatter for the placeholder tests
+    formatter = RMLFormatter
+
+
+# Add the common file-based tests
+data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
+generate_filebased_tests(data_dir, XMLFormatFileTest)
+
+# Add tests for plain XML
+data_dir = os.path.join(os.path.dirname(__file__), 'test_format_data')
+generate_filebased_tests(data_dir, XMLFormatFileTest)
+
+# Add tests using the placeholder (ie RML)
+data_dir = os.path.join(os.path.dirname(__file__), 'test_format_data')
+generate_filebased_tests(data_dir, PlaceholderFormatFileTest, suffix='rml')

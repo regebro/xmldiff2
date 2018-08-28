@@ -1,5 +1,6 @@
 from __future__ import division
 
+import re
 from operator import eq
 
 
@@ -92,3 +93,9 @@ def longest_common_subsequence(left_sequence, right_sequence, eqfn=eq):
                     list(zip(range(lend, lslen), range(rend, rslen)))
             else:
                 furtherst[k] = (x, history)
+
+
+WHITESPACE = re.compile(u'\s+', flags=re.MULTILINE)
+
+def cleanup_whitespace(text):
+    return WHITESPACE.sub(' ', text)

@@ -3,6 +3,7 @@ import unittest
 
 from io import open
 from lxml import etree
+from pprint import pprint
 from xmldiff2.utils import post_order_traverse, breadth_first_traverse
 from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
@@ -572,6 +573,26 @@ class TestMatch(unittest.TestCase):
             ('/wrap', '/wrap')
         ])
 
+    def test_match_insert_node(self):
+        left = u'''<document title="insert-node">
+  <story id="id">
+
+  </story>
+</document>
+'''
+        right = u'''<document title="insert-node">
+  <story id="id">
+
+    <h1>Inserted <i>Node</i></h1>
+
+  </story>
+</document>'''
+        result = self._match(left, right)
+        self.assertEqual(result, [
+            ('/document/story', '/document/story'),
+            ('/document', '/document'),
+        ])
+
 
 class TestUpdateNode(unittest.TestCase):
     """Testing only the update phase of the diffing"""
@@ -721,8 +742,8 @@ class TestDiff(unittest.TestCase):
 
     def _diff(self, left, right):
         parser = etree.XMLParser(remove_blank_text=True)
-        left_tree = etree.XML(left, parser)
-        right_tree = etree.XML(right, parser)
+        left_tree = etree.fromstring(left, parser)
+        right_tree = etree.fromstring(right, parser)
         differ = Differ()
         differ.set_trees(left_tree, right_tree)
         editscript = list(differ.diff())
@@ -797,8 +818,8 @@ class TestDiff(unittest.TestCase):
 
     def test_rmldoc(self):
         here = os.path.split(__file__)[0]
-        lfile = os.path.join(here, 'test_diff_data', 'rmldoc_left.xml')
-        rfile = os.path.join(here, 'test_diff_data', 'rmldoc_right.xml')
+        lfile = os.path.join(here, 'test_data', 'rmldoc.left.xml')
+        rfile = os.path.join(here, 'test_data', 'rmldoc.right.xml')
         with open(lfile, 'rt', encoding='utf8') as l:
             left = l.read()
         with open(rfile, 'rt', encoding='utf8') as r:
@@ -978,8 +999,3 @@ class TestDiff(unittest.TestCase):
              DeleteNode('/document/story/app:section/foo:para'),
             ]
         )
-
-    def test_textdiff(self):
-        left = u"""<root><node>The contained text</node>And a tail</root>"""
-        right = u"""<root><node>The contained text!</node>And a tail!</root>"""
-        result = self._diff(left, right)
