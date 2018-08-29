@@ -1,7 +1,5 @@
 from __future__ import division
 
-import re
-
 from collections import namedtuple
 from copy import deepcopy
 from difflib import SequenceMatcher
@@ -115,7 +113,7 @@ class Differ(object):
                     # This is a complete match, break here
                     break
 
-            if max_match > self.F:
+            if max_match >= self.F:
                 self.append_match(lnode, match_node, max_match)
 
             # We don't want to check nodes that already are matched
@@ -140,7 +138,7 @@ class Differ(object):
             texts.append(':'.join(each))
 
         text = u' '.join(texts).strip()
-        return re.sub(u'\s+', u' ', text, flags=re.MULTILINE)
+        return utils.cleanup_whitespace(text)
 
     def leaf_ratio(self, left, right):
         # How similar two nodes are, with no consideration of their children

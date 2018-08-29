@@ -7,7 +7,8 @@ from lxml import etree
 from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
                            DeleteAttrib, UpdateTextAfter)
-from xmldiff2.format import XMLFormatter
+from xmldiff2.format import XMLFormatter, RMLFormatter, WS_TEXT
+from xmldiff2.main import diff_texts, diff_trees, diff_files
 
 from .utils import make_test_function, generate_filebased_tests
 
@@ -18,9 +19,9 @@ END = u'</node></document>'
 class TestXMLFormat(unittest.TestCase):
 
     def _format_test(self, left, action, expected):
-        formatter = XMLFormatter()
+        formatter = XMLFormatter(pretty_print=False)
         result = formatter.format(etree.fromstring(left), [action])
-        self.assertEqual(etree.tounicode(result), expected)
+        self.assertEqual(result, expected)
 
     def test_incorrect_xpaths(self):
         left = u'<document><node a="v"/><node>Text</node></document>'
@@ -194,8 +195,8 @@ class TestXMLFormatIntegration(unittest.TestCase):
         expected = ''
 
         parser = etree.XMLParser(remove_blank_text=True)
-        left_tree = etree.XML(left, parser)
-        right_tree = etree.XML(right, parser)
+        left_tree = etree.fromstring(left, parser)
+        right_tree = etree.fromstring(right, parser)
         differ = Differ()
         diff = list(differ.diff(left_tree, right_tree))
         formatter = XMLFormatter()
@@ -211,16 +212,28 @@ class TestXMLFormatIntegration(unittest.TestCase):
 
 class FormatFileTest(unittest.TestCase):
 
-    def process(self, left_xml, right_xml):
-        parser = etree.XMLParser(remove_blank_text=True)
-        left_tree = etree.XML(left_xml, parser)
-        right_tree = etree.XML(right_xml, parser)
-        differ = Differ()
-        diff = differ.diff(left_tree, right_tree)
-        formatter = XMLFormatter()
-        return etree.tounicode(formatter.format(etree.fromstring(left_xml), diff))
+    formatter = None  # Override this
+    maxDiff = None
+
+    def process(self, left, right):
+        return diff_files(left, right, formatter=self.formatter)
 
 
-data_dir = os.path.join(
-    os.path.dirname(__file__), __name__.split('.')[-1]+'_data')
-generate_filebased_tests(data_dir, FormatFileTest)
+class XMLFormatFileTest(FormatFileTest):
+
+    formatter = XMLFormatter(pretty_print=False, normalize=WS_TEXT)
+
+
+class RMLFormatFileTest(FormatFileTest):
+
+    # We use the RMLFormatter for the placeholder tests
+    formatter = RMLFormatter()
+
+
+# Add the common file-based tests
+data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
+generate_filebased_tests(data_dir, XMLFormatFileTest)
+
+# Add tests using the placeholder (ie RML)
+data_dir = os.path.join(os.path.dirname(__file__), 'test_format_data')
+generate_filebased_tests(data_dir, RMLFormatFileTest, suffix='rml')

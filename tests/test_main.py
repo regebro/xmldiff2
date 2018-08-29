@@ -5,9 +5,9 @@ from lxml import etree
 from xmldiff2 import main, format
 
 CURDIR = os.path.split(__file__)[0]
-LEFT_FILE = os.path.join(CURDIR, 'test_diff_data', 'rmldoc_left.xml')
-RIGHT_FILE = os.path.join(CURDIR, 'test_diff_data', 'rmldoc_right.xml')
-EXPECTED_FILE = os.path.join(CURDIR, 'test_diff_data', 'rmldoc_expected.xml')
+LEFT_FILE = os.path.join(CURDIR, 'test_data', 'rmldoc.left.xml')
+RIGHT_FILE = os.path.join(CURDIR, 'test_data', 'rmldoc.right.xml')
+EXPECTED_FILE = os.path.join(CURDIR, 'test_data', 'rmldoc.expected.xml')
 
 
 class TestMainAPI(unittest.TestCase):
@@ -65,6 +65,5 @@ class TestMainAPI(unittest.TestCase):
         formatter = format.XMLFormatter()
         # diff_files can take filenames
         result = main.diff_files(LEFT_FILE, RIGHT_FILE, formatter=formatter)
-        text = etree.tounicode(result)
         # This formatter will insert a diff namespace:
-        self.assertIn('xmlns:diff="http://namespaces.shoobx.com/diff"', text)
+        self.assertIn('xmlns:diff="http://namespaces.shoobx.com/diff"', result)
