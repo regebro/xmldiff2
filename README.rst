@@ -2,7 +2,7 @@ xmldiff2
 ========
 
 xmldiff2 is a library and a command line utility for making diffs out of
-XML and XML derived formats, such as XHTML.
+XML.
 
 It's called xmldiff2, because there is already a library and utility called
 xmldiff. xmldiff has various problems though, mainly that the code is complex

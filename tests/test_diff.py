@@ -593,6 +593,21 @@ class TestMatch(unittest.TestCase):
             ('/document', '/document'),
         ])
 
+    def test_entirely_different(self):
+        left = u'''<document title="insert-node">
+  <story id="id">
+
+  </story>
+</document>
+'''
+        right = u'''<document title="something else">
+    <h1>Inserted <i>Node</i></h1>
+</document>'''
+        result = self._match(left, right)
+        self.assertEqual(result, [
+            ('/document', '/document'),
+        ])
+
 
 class TestUpdateNode(unittest.TestCase):
     """Testing only the update phase of the diffing"""

@@ -8,18 +8,11 @@ def make_test_function(left_filename):
     expected_filename = left_filename.replace('.left.', '.expected.')
 
     def test(self):
-        # The input files are opened as binary, so that any xml encoding
-        # can get passed through.
-        with open(left_filename, 'rb') as input_file:
-            left_xml = input_file.read()
-        with open(right_filename, 'rb') as input_file:
-            right_xml = input_file.read()
-        # The output is in unicode, though, or we can't compare non-ascii chars
         with open(expected_filename, 'rt', encoding='utf8') as input_file:
             expected_xml = input_file.read()
 
         try:
-            result_xml = self.process(left_xml, right_xml)
+            result_xml = self.process(left_filename, right_filename)
         except Exception as err:
             if u'.err' not in left_filename:
                 raise
@@ -28,6 +21,7 @@ def make_test_function(left_filename):
         self.assertEqual(expected_xml.strip(), result_xml.strip())
 
     return test
+
 
 def generate_filebased_tests(data_dir, test_class, suffix='xml', ignore=()):
     for left_filename in os.listdir(data_dir):

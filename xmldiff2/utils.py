@@ -97,5 +97,6 @@ def longest_common_subsequence(left_sequence, right_sequence, eqfn=eq):
 
 WHITESPACE = re.compile(u'\s+', flags=re.MULTILINE)
 
+
 def cleanup_whitespace(text):
     return WHITESPACE.sub(' ', text)

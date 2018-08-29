@@ -65,6 +65,5 @@ class TestMainAPI(unittest.TestCase):
         formatter = format.XMLFormatter()
         # diff_files can take filenames
         result = main.diff_files(LEFT_FILE, RIGHT_FILE, formatter=formatter)
-        text = etree.tounicode(result)
         # This formatter will insert a diff namespace:
-        self.assertIn('xmlns:diff="http://namespaces.shoobx.com/diff"', text)
+        self.assertIn('xmlns:diff="http://namespaces.shoobx.com/diff"', result)

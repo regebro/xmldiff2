@@ -1,7 +1,5 @@
 from __future__ import division
 
-import re
-
 from collections import namedtuple
 from copy import deepcopy
 from difflib import SequenceMatcher
