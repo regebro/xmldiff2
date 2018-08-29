@@ -315,28 +315,31 @@ class XMLFormatter(object):
                 self._replace_placeholders(elem)
 
     def _replace_placeholders(self, elem):
-        if not self.placeholders2xml:
-            return
+        # Why don't I just return if self.placeholders2xml is empty?
+        # Because then coverage misses the return statement!
+        # So why not have return on the same line as the if?
+        # Because then flake8 errors out! Sometimes Python is annoying.
+        if self.placeholders2xml:
 
-        if elem.text:
-            xml_str = u''
-            for seg in re.split(u'([%s])' % u''.join(self.placeholders2xml),
-                                elem.text, flags=re.MULTILINE):
-                # Segments can be either plain string or placeholders.
-                if len(seg) == 1 and seg in self.placeholders2xml:
-                    xml_str += self.placeholders2xml[seg]
-                else:
-                    xml_str += seg
+            if elem.text:
+                xml_str = u''
+                regexp = u'([%s])' % u''.join(self.placeholders2xml)
+                for seg in re.split(regexp, elem.text, flags=re.MULTILINE):
+                    # Segments can be either plain string or placeholders.
+                    if len(seg) == 1 and seg in self.placeholders2xml:
+                        xml_str += self.placeholders2xml[seg]
+                    else:
+                        xml_str += seg
 
-            # Now create the XML to insert.
-            content = etree.fromstring(u'<wrap>' + xml_str + u'</wrap>')
-            elem.text = content.text
+                # Now create the XML to insert.
+                content = etree.fromstring(u'<wrap>' + xml_str + u'</wrap>')
+                elem.text = content.text
 
-            for child in content:
-                elem.append(child)
+                for child in content:
+                    elem.append(child)
 
-        for child in elem:
-            self._replace_placeholders(child)
+            for child in elem:
+                self._replace_placeholders(child)
 
 
 class RMLFormatter(XMLFormatter):
