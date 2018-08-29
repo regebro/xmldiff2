@@ -12,6 +12,14 @@ def post_order_traverse(node):
     yield node
 
 
+def reverse_post_order_traverse(node):
+    for child in reversed(node.getchildren()):
+        # PY3: Man, I want yield from!
+        for item in reverse_post_order_traverse(child):
+            yield item
+    yield node
+
+
 def breadth_first_traverse(node):
     # First yield the root node
     yield node
@@ -100,3 +108,14 @@ WHITESPACE = re.compile(u'\s+', flags=re.MULTILINE)
 
 def cleanup_whitespace(text):
     return WHITESPACE.sub(' ', text)
+
+
+def getpath(element, tree=None):
+    if tree is None:
+        tree = element.getroottree()
+    xpath = tree.getpath(element)
+    if xpath[-1] != ']':
+        # The path is unique without specifying a count. However, we always
+        # want that count, so we add [1].
+        xpath = xpath + '[1]'
+    return xpath

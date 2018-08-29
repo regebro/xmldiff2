@@ -109,7 +109,7 @@ class Differ(object):
                 # Try to shortcut for nodes that are not only equal but also
                 # in the same place in the tree
                 if (match == 1.0 and
-                   lroot.getpath(lnode) == rroot.getpath(rnode)):
+                   utils.getpath(lnode, lroot) == utils.getpath(rnode, rroot)):
                     # This is a complete match, break here
                     break
 
@@ -193,8 +193,8 @@ class Differ(object):
         return count / child_count
 
     def update_node_attr(self, left, right):
-        left_xpath = left.getroottree().getpath(left)
-        right_xpath = right.getroottree().getpath(right)
+        left_xpath = utils.getpath(left)
+        right_xpath = utils.getpath(right)
 
         # Update: Look for differences in attributes
 
@@ -244,7 +244,7 @@ class Differ(object):
             del left.attrib[key]
 
     def update_node_text(self, left, right):
-        left_xpath = left.getroottree().getpath(left)
+        left_xpath = utils.getpath(left)
 
         # Lastly, do the differences in texts. This inserts nodes
         # when making an XML diff, so it's best to have this last.
@@ -312,8 +312,8 @@ class Differ(object):
             rtarget = unaligned_right.getparent()
             ltarget = self._r2lmap[id(rtarget)]
             yield MoveNode(
-                unaligned_left.getroottree().getpath(unaligned_left),
-                rtarget.getroottree().getpath(rtarget),
+                utils.getpath(unaligned_left),
+                utils.getpath(rtarget),
                 right_pos)
             # Do the actual move:
             left.remove(unaligned_left)
@@ -340,7 +340,7 @@ class Differ(object):
                 # (i)
                 pos = self.find_pos(rnode)
                 # (ii)
-                yield InsertNode(ltree.getpath(ltarget), rnode.tag, pos)
+                yield InsertNode(utils.getpath(ltarget, ltree), rnode.tag, pos)
                 # (iii)
                 lnode = ltarget.makeelement(rnode.tag)
                 self.append_match(lnode, rnode, 1.0)
@@ -373,8 +373,8 @@ class Differ(object):
                 if ltarget is not lparent:
                     pos = self.find_pos(rnode)
                     yield MoveNode(
-                        ltree.getpath(lnode),
-                        rtree.getpath(rparent),
+                        utils.getpath(lnode, ltree),
+                        utils.getpath(rparent, rtree),
                         pos)
                     # Move the node from current parent to target
                     lparent.remove(lnode)
@@ -392,8 +392,8 @@ class Differ(object):
             for action in self.update_node_text(lnode, rnode):
                 yield action
 
-        for lnode in utils.post_order_traverse(self.left):
+        for lnode in utils.reverse_post_order_traverse(self.left):
             if id(lnode) not in self._l2rmap:
                 # No match
-                yield DeleteNode(ltree.getpath(lnode))
+                yield DeleteNode(utils.getpath(lnode, ltree))
                 lnode.getparent().remove(lnode)

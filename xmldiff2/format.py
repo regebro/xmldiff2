@@ -315,6 +315,9 @@ class XMLFormatter(object):
                 self._replace_placeholders(elem)
 
     def _replace_placeholders(self, elem):
+        if not self.placeholders2xml:
+            return
+
         if elem.text:
             xml_str = u''
             for seg in re.split(u'([%s])' % u''.join(self.placeholders2xml),

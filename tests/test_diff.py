@@ -654,12 +654,12 @@ class TestUpdateNode(unittest.TestCase):
         self.assertEqual(
             result,
             [
-                UpdateAttrib('/root/node', 'attr2', 'uhhuh'),
-                MoveAttrib('/root/node', '/root/node', 'attr1', 'attr4'),
-                InsertAttrib('/root/node', 'attr5', 'new'),
-                DeleteAttrib('/root/node', 'attr0'),
-                UpdateTextIn('/root/node', 'The new text'),
-                UpdateTextAfter('/root/node', 'Also a tail!'),
+                UpdateAttrib('/root/node[1]', 'attr2', 'uhhuh'),
+                MoveAttrib('/root/node[1]', '/root/node[1]', 'attr1', 'attr4'),
+                InsertAttrib('/root/node[1]', 'attr5', 'new'),
+                DeleteAttrib('/root/node[1]', 'attr0'),
+                UpdateTextIn('/root/node[1]', 'The new text'),
+                UpdateTextAfter('/root/node[1]', 'Also a tail!'),
             ]
         )
 
@@ -749,7 +749,7 @@ class TestAlignChildren(unittest.TestCase):
         result = self._align(left, right)
         self.assertEqual(result,
                          [MoveNode('/document/story/section/para[1]',
-                                   '/document/story/section', 2)])
+                                   '/document/story/section[1]', 2)])
 
 
 class TestDiff(unittest.TestCase):
@@ -795,7 +795,7 @@ class TestDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [InsertNode('/document/story', 'section', 1),
+            [InsertNode('/document/story[1]', 'section', 1),
              InsertAttrib('/document/story/section[2]', 'ref', '4'),
              InsertAttrib('/document/story/section[2]', 'single-ref', '4'),
              MoveNode('/document/story/section[1]/para[3]',
@@ -803,8 +803,8 @@ class TestDiff(unittest.TestCase):
              InsertNode('/document/story/section[2]', 'para', 0),
              UpdateTextIn('/document/story/section[2]/para[1]',
                         'Fourth paragraph'),
-             DeleteNode('/document/story/deleteme/para'),
-             DeleteNode('/document/story/deleteme'),
+             DeleteNode('/document/story/deleteme/para[1]'),
+             DeleteNode('/document/story/deleteme[1]'),
              ]
         )
 
@@ -814,7 +814,7 @@ class TestDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [MoveNode('/root/n[1]', '/root', 1),
+            [MoveNode('/root/n[1]', '/root[1]', 1),
              MoveNode('/root/n[2]/p[2]', '/root/n[1]', 0),
             ]
         )
@@ -825,8 +825,8 @@ class TestDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [DeleteAttrib(node='/root', name='attr'),
-             MoveNode('/root/n[1]', '/root', 1),
+            [DeleteAttrib(node='/root[1]', name='attr'),
+             MoveNode('/root/n[1]', '/root[1]', 1),
              MoveNode('/root/n[2]/p[2]', '/root/n[1]', 0),
             ]
         )
@@ -844,7 +844,7 @@ class TestDiff(unittest.TestCase):
         self.assertEqual(
             result,
             [InsertNode(
-              '/document/story',
+              '/document/story[1]',
               '{http://namespaces.shoobx.com/application}section',
               4),
              InsertAttrib('/document/story/app:section[4]', 'hidden', 'false'),
@@ -874,80 +874,80 @@ class TestDiff(unittest.TestCase):
              UpdateAttrib('/document/story/app:section[14]', 'ref', '12'),
              UpdateAttrib('/document/story/app:section[14]', 'single-ref', '12'),
              UpdateTextIn(
-                 '/document/story/app:section[1]/para[2]/app:placeholder',
+                 '/document/story/app:section[1]/para[2]/app:placeholder[1]',
                  'Second Name'),
              InsertNode(
               '/document/story/app:section[4]',
               '{http://namespaces.shoobx.com/application}term',
               0),
              InsertAttrib(
-              '/document/story/app:section[4]/app:term', 'name',
+              '/document/story/app:section[4]/app:term[1]', 'name',
               'sign_bonus'),
-             InsertAttrib('/document/story/app:section[4]/app:term', 'set', 'ol'),
+             InsertAttrib('/document/story/app:section[4]/app:term[1]', 'set', 'ol'),
              InsertNode('/document/story/app:section[4]', 'para', 1),
              InsertNode(
-              '/document/story/app:section[4]/para',
+              '/document/story/app:section[4]/para[1]',
               '{http://namespaces.shoobx.com/application}ref',
               0),
              InsertAttrib(
-              '/document/story/app:section[4]/para/app:ref', 'name',
+              '/document/story/app:section[4]/para/app:ref[1]', 'name',
               'sign'),
              InsertAttrib(
-                 '/document/story/app:section[4]/para/app:ref',
+                 '/document/story/app:section[4]/para/app:ref[1]',
                  '{http://namespaces.shoobx.com/preview}body',
                  '<Ref>'),
              UpdateTextIn(
-                 '/document/story/app:section[4]/para/app:ref', '3'),
+                 '/document/story/app:section[4]/para/app:ref[1]', '3'),
              UpdateTextAfter(
-                 '/document/story/app:section[4]/para/app:ref', '. '),
-             InsertNode('/document/story/app:section[4]/para', 'u', 1),
+                 '/document/story/app:section[4]/para/app:ref[1]', '. '),
+             InsertNode('/document/story/app:section[4]/para[1]', 'u', 1),
              UpdateTextAfter(
-                 '/document/story/app:section[4]/para/u',
+                 '/document/story/app:section[4]/para/u[1]',
                  '.\n              You will also be paid a '),
              InsertNode(
-              '/document/story/app:section[4]/para',
+              '/document/story/app:section[4]/para[1]',
               '{http://namespaces.shoobx.com/application}placeholder',
               2),
              InsertAttrib(
-              '/document/story/app:section[4]/para/app:placeholder', 'field',
+              '/document/story/app:section[4]/para/app:placeholder[1]', 'field',
               'ol.sign_bonus_include_amt'),
              InsertAttrib(
-              '/document/story/app:section[4]/para/app:placeholder', 'missing',
+              '/document/story/app:section[4]/para/app:placeholder[1]', 'missing',
               'Signing Bonus Amount'),
              UpdateTextAfter(
-                 '/document/story/app:section[4]/para/app:placeholder',
+                 '/document/story/app:section[4]/para/app:placeholder[1]',
                  (' signing\n              bonus, which will be paid on the ' +
                   'next regularly scheduled pay date\n              after ' +
                   'you start employment with the Company.\n              \n' +
                   '            ')
                  ),
-             InsertNode('/document/story/app:section[4]/para/u', 'b', 0),
+             InsertNode('/document/story/app:section[4]/para/u[1]', 'b', 0),
              UpdateTextIn(
-                 '/document/story/app:section[4]/para/u/b',
+                 '/document/story/app:section[4]/para/u/b[1]',
                  'Signing Bonus'),
              UpdateTextIn(
-              '/document/story/app:section[5]/para/app:ref',
+              '/document/story/app:section[5]/para/app:ref[1]',
               '4'),
              UpdateTextIn(
-              '/document/story/app:section[6]/para/app:ref',
+              '/document/story/app:section[6]/para/app:ref[1]',
               '5'),
              UpdateTextIn(
-              '/document/story/app:section[7]/para/app:ref',
+              '/document/story/app:section[7]/para/app:ref[1]',
               '6'),
              UpdateTextIn(
-              '/document/story/app:section[8]/para/app:ref',
+              '/document/story/app:section[8]/para/app:ref[1]',
               '7'),
              UpdateTextIn(
-              '/document/story/app:section[9]/para/app:ref',
+              '/document/story/app:section[9]/para/app:ref[1]',
               '8'),
              UpdateTextIn(
-              '/document/story/app:section[10]/para/app:ref',
+              '/document/story/app:section[10]/para/app:ref[1]',
               '9'),
              UpdateTextIn(
-              '/document/story/app:section[11]/para/app:ref',
+              '/document/story/app:section[11]/para/app:ref[1]',
               '10'),
              UpdateTextIn(
-              '/document/story/app:section[12]/para/app:ref',
+              '/document/story/app:section[12]/para/app:ref[1]',
               '11')
             ]
         )
@@ -1002,7 +1002,7 @@ class TestDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [InsertNode('/document/story/app:section', '{someuri}para', 0),
+            [InsertNode('/document/story/app:section[1]', '{someuri}para', 0),
              UpdateTextIn(
                  '/document/story/app:section/app:para[1]',
                  'Lorem ipsum dolor sit amet,\n                consectetur '
@@ -1011,6 +1011,35 @@ class TestDiff(unittest.TestCase):
                  'ornare felis,\n                ac elementum sem.'),
              InsertAttrib('/document/story/app:section/app:para[3]',
                           '{someuri}attrib', 'value'),
-             DeleteNode('/document/story/app:section/foo:para'),
+             DeleteNode('/document/story/app:section/foo:para[1]'),
             ]
+        )
+
+    def test_multiple_tag_deletes(self):
+        left = u"""<document title="delte-node-ul">
+    <story id="id">
+
+        <ul>
+            <li>One</li>
+            <li>Two</li>
+            <li>Three</li>
+        </ul>
+
+    </story>
+</document>"""
+
+        right = u"""<document title="delte-node-ul">
+    <story id="id">
+    </story>
+</document>"""
+
+        result = self._diff(left, right)
+        self.assertEqual(
+            result,
+            [UpdateTextIn(node='/document/story[1]', text='\n    '),
+             DeleteNode(node='/document/story/ul/li[3]'),
+             DeleteNode(node='/document/story/ul/li[2]'),
+             DeleteNode(node='/document/story/ul/li[1]'),
+             DeleteNode(node='/document/story/ul[1]'),
+             ]
         )
