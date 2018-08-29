@@ -1,6 +1,10 @@
 xmldiff2
 ========
 
+.. image:: https://travis-ci.org/regebro/xmldiff2.svg?branch=master
+
+.. image:: https://coveralls.io/repos/github/regebro/xmldiff2/badge.svg
+
 xmldiff2 is a library and a command line utility for making diffs out of
 XML.
 
