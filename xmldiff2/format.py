@@ -12,10 +12,131 @@ DIFF_NS = 'http://namespaces.shoobx.com/diff'
 DIFF_PREFIX = 'diff'
 
 # Flags for whitespace handling in the text aware formatters:
-WS_ALL = 'all'  # Normalize all whitespace, even outside text tags
+WS_BOTH = 'both'  # Normalize ignorable whitespace and text whitespace
 WS_TEXT = 'text'  # Normalize whitespace only inside text tags
-WS_TAGS = 'tags'  # Normalize whitespace only outside text tags
+WS_TAGS = 'tags'  # Delete ignorable whitespace (between tags)
 WS_NONE = 'none'  # Preserve all whitespace
+
+
+class TagPlaceholderReplacer(object):
+    """Replace tags with unicode placeholders
+
+    This class searches for certain tags in an XML tree and replaces them
+    with unicode placeholders. The idea is to replace structured content
+    (in this case XML elements) with unicode characters which then
+    participate in the regular text diffing algorithm. This makes text
+    diffing easier and faster.
+
+    The code can then unreplace the unicode placeholders with the tags.
+    """
+
+    def __init__(self, text_tags=(), formatting_tags=(), normalize=WS_NONE):
+        self.text_tags = text_tags
+        self.formatting_tags = formatting_tags
+        self.normalize = normalize
+        self.placeholders2xml = {}
+        self.xml2placeholders = {}
+        # This number represents the beginning of the largest private-use
+        #  block (13,000 characters) in the unicode space.
+        self.placeholder = 0xf0000
+
+    def get_placeholder(self, text):
+        if text in self.xml2placeholders:
+            return self.xml2placeholders[text]
+
+        self.placeholder += 1
+        ph = six.unichr(self.placeholder)
+        self.placeholders2xml[ph] = text
+        self.xml2placeholders[text] = ph
+        return ph
+
+    def do_element(self, element):
+        for child in element:
+            # Resolve all formatting text by allowing the inside text to
+            # participate in the text diffing.
+            if child.tag in self.formatting_tags:
+                # If it's known text formatting tags, do this hierarchically.
+                # All other tags are replaced as single unknown units.
+                self.do_element(child)
+                attrs = ' '.join('%s="%s"' % attr
+                                 for attr in element.attrib.items())
+                if attrs:
+                    text = '<%s %s>' % (child.tag, attrs)
+                else:
+                    text = '<%s>' % child.tag
+                open_ph = self.get_placeholder(text)
+                close_ph = self.get_placeholder('</%s>' % child.tag)
+
+                element.text = ((element.text or u'') + open_ph +
+                                (child.text or u'') + close_ph +
+                                (child.tail or u''))
+            else:
+                # Replace the whole tag, with content:
+                tail = child.tail or u''
+                child.tail = None
+                text = etree.tounicode(child)
+                ph = self.get_placeholder(text)
+                element.text = (element.text or u'') + ph + tail
+
+            # Remove the element from the tree now that we have inserted a
+            # placeholder.
+            element.remove(child)
+
+        if element.text is not None:
+            if self.normalize in (WS_BOTH, WS_TEXT):
+                element.text = cleanup_whitespace(element.text)
+
+    def do_tree(self, tree):
+        if self.text_tags:
+            for elem in tree.xpath('//'+'|//'.join(self.text_tags)):
+                self.do_element(elem)
+
+    def undo_string(self, text):
+        regexp = u'([%s])' % u''.join(self.placeholders2xml)
+        new_text = u''
+        for seg in re.split(regexp, text, flags=re.MULTILINE):
+            # Segments can be either plain string or placeholders.
+            if len(seg) == 1 and seg in self.placeholders2xml:
+                new_text += self.placeholders2xml[seg]
+            else:
+                new_text += seg
+
+        if new_text == text:
+            # Nothing left to replace
+            return new_text
+
+        # We can have multiple levels of things to replace here:
+        return self.undo_string(new_text)
+
+    def undo_element(self, elem):
+        if self.placeholders2xml:
+
+            if elem.text:
+                new_text = self.undo_string(elem.text)
+                if new_text != elem.text:
+                    # Something was replaced, create the XML to insert.
+                    content = etree.fromstring(u'<wrap>%s</wrap>' % new_text)
+                    elem.text = content.text
+
+                    for child in content:
+                        elem.append(child)
+
+            if elem.tail:
+                new_text = self.undo_string(elem.tail)
+                if new_text != elem.tail:
+                    content = etree.fromstring(u'<wrap>%s</wrap>' % new_text)
+                    elem.tail = content.text
+                    parent = elem.getparent()
+                    for child in content:
+                        parent.append(child)
+
+            for child in elem:
+                self.undo_element(child)
+
+    def undo_tree(self, tree):
+        if self.text_tags:
+            for elem in tree.xpath('//'+'|//'.join(self.text_tags)):
+                self.undo_element(elem)
 
 
 class XMLFormatter(object):
@@ -59,37 +180,34 @@ class XMLFormatter(object):
     structural content before formatting.
 
     The ``normalize`` parameter decides how to normalize whitespace.
-    WS_ALL normalizes all whitespace in all texts, WS_TEXT normalizes only
+    WS_BOTH normalizes all whitespace in all texts, WS_TEXT normalizes only
     inside text_tags, WS_NONE will preserve all whitespace.
     """
 
     def __init__(self, pretty_print=True, remove_blank_text=False,
                  normalize=WS_NONE, text_tags=(), formatting_tags=()):
         # Mapping from placeholders -> structural content and vice versa.
-        self.placeholders2xml = {}
-        self.xml2placeholders = {}
-        self.format_placeholders = u''
         self.normalize = normalize
         self.pretty_print = pretty_print
         self.remove_blank_text = pretty_print
         self.text_tags = text_tags
         self.formatting_tags = formatting_tags
-        # This number represents the beginning of the largest private-use
-        #  block (13,000 characters) in the unicode space.
-        self.placeholder = 0xf0000
+        self.placeholderer = TagPlaceholderReplacer(
+            text_tags=text_tags, formatting_tags=formatting_tags,
+            normalize=normalize)
 
     def prepare(self, left_tree, right_tree):
         """prepare() is run on the trees before diffing
 
         This is so the formatter can apply magic before diffing."""
-        self._prepare_tree(left_tree)
-        self._prepare_tree(right_tree)
+        self.placeholderer.do_tree(left_tree)
+        self.placeholderer.do_tree(right_tree)
 
     def finalize(self, result_tree):
         """finalize() is run on the resulting tree before returning it
 
         This is so the formatter cab apply magic after diffing."""
-        self._finalize_tree(result_tree)
+        self.placeholderer.undo_tree(result_tree)
 
     def format(self, orig_tree, diff):
         # Make a new tree, both because we want to add the diff namespace
@@ -224,7 +342,7 @@ class XMLFormatter(object):
         return new_node
 
     def _make_diff_tags(self, left_value, right_value, node, target=None):
-        if self.normalize in (WS_ALL, WS_TAGS):
+        if self.normalize in (WS_BOTH, WS_TAGS):
             left_value = cleanup_whitespace(left_value or u'').strip()
             right_value = cleanup_whitespace(right_value or u'').strip()
 
@@ -273,79 +391,11 @@ class XMLFormatter(object):
 
         return node
 
-    def _prepare_tree(self, tree):
-        if self.text_tags:
-            for elem in tree.xpath('//'+'|//'.join(self.text_tags)):
-                self._insert_placeholders(elem)
-
-    def _insert_placeholders(self, elem):
-        for child in elem:
-            # Resolve all formatting text by allowing the inside text to
-            # participate in the text diffing.
-            if child.tag in self.formatting_tags:
-                # If it's known text formatting tags, do this hierarchically.
-                # All other tags are replaced as single unknown units.
-                self._insert_placeholders(child)
-
-            # Replace the tag:
-            tail = child.tail or u''
-            child.tail = None
-            text = etree.tounicode(child)
-
-            if text in self.xml2placeholders:
-                ph = self.xml2placeholders[text]
-            else:
-                self.placeholder += 1
-                ph = six.unichr(self.placeholder)
-                self.placeholders2xml[ph] = text
-                self.xml2placeholders[text] = ph
-
-            elem.text = (elem.text or u'') + ph + tail
-            # Remove the element from the tree now that we have inserted a
-            # placeholder.
-            elem.remove(child)
-
-        if elem.text is not None:
-            if self.normalize in (WS_ALL, WS_TEXT):
-                elem.text = cleanup_whitespace(elem.text)
-
-    def _finalize_tree(self, tree):
-        if self.text_tags:
-            for elem in tree.xpath('//'+'|//'.join(self.text_tags)):
-                self._replace_placeholders(elem)
-
-    def _replace_placeholders(self, elem):
-        # Why don't I just return if self.placeholders2xml is empty?
-        # Because then coverage misses the return statement!
-        # So why not have return on the same line as the if?
-        # Because then flake8 errors out! Sometimes Python is annoying.
-        if self.placeholders2xml:
-
-            if elem.text:
-                xml_str = u''
-                regexp = u'([%s])' % u''.join(self.placeholders2xml)
-                for seg in re.split(regexp, elem.text, flags=re.MULTILINE):
-                    # Segments can be either plain string or placeholders.
-                    if len(seg) == 1 and seg in self.placeholders2xml:
-                        xml_str += self.placeholders2xml[seg]
-                    else:
-                        xml_str += seg
-
-                # Now create the XML to insert.
-                content = etree.fromstring(u'<wrap>' + xml_str + u'</wrap>')
-                elem.text = content.text
-
-                for child in content:
-                    elem.append(child)
-
-            for child in elem:
-                self._replace_placeholders(child)
-
 
 class RMLFormatter(XMLFormatter):
 
     def __init__(self, pretty_print=True, remove_blank_text=True,
-                 normalize=WS_ALL,
+                 normalize=WS_BOTH,
                  text_tags=('para', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'),
                  formatting_tags=('b', 'u', 'i', 'strike', 'em', 'super',
                                   'sup', 'sub', 'link', 'a', 'span')):

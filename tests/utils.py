@@ -18,6 +18,8 @@ def make_test_function(left_filename):
                 raise
             result_xml = u'%s: %s' % (err.__class__.__name__, err)
 
+        import pdb;pdb.set_trace()
+        open('tests/test_data/rmldoc.expected.rml', 'wb').write(expected_xml.encode('utf8'))
         self.assertEqual(expected_xml.strip(), result_xml.strip())
 
     return test

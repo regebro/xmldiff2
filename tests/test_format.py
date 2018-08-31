@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 import os
 import re
 import unittest
@@ -7,13 +8,107 @@ from lxml import etree
 from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
                            DeleteAttrib, UpdateTextAfter)
-from xmldiff2.format import XMLFormatter, RMLFormatter, WS_TEXT
+from xmldiff2.format import XMLFormatter, RMLFormatter, TagPlaceholderReplacer, WS_TEXT
 from xmldiff2.main import diff_texts, diff_trees, diff_files
 
 from .utils import make_test_function, generate_filebased_tests
 
 START = u'<document xmlns:diff="http://namespaces.shoobx.com/diff"><node'
 END = u'</node></document>'
+
+
+class TestTagPlaceHolderReplacer(unittest.TestCase):
+
+    def test_get_placeholder(self):
+        replacer = TagPlaceholderReplacer()
+        # Get a placeholder:
+        ph = replacer.get_placeholder(u'text')
+        self.assertEqual(ph, u'\U000f0001')
+        # Do it again:
+        ph = replacer.get_placeholder(u'text')
+        self.assertEqual(ph, u'\U000f0001')
+        # Get another one
+        ph = replacer.get_placeholder(u'more text')
+        self.assertEqual(ph, u'\U000f0002')
+
+    def test_replace_tags_element(self):
+        replacer = TagPlaceholderReplacer(['p'], ['b'])
+
+        # Formatting tags get replaced, and the content remains
+        text = u'<p>This is a tag with <b>formatted</b> text.</p>'
+        element = etree.fromstring(text)
+        replacer.do_element(element)
+        result = etree.tounicode(element)
+        self.assertEqual(
+            result,
+            u'<p>This is a tag with \U000f0001formatted\U000f0002 text.</p>')
+
+        # Non formatting tags get replaced with content
+        text = u'<p>This is a tag with <foo>formatted</foo> text.</p>'
+        element = etree.fromstring(text)
+        replacer.do_element(element)
+        result = etree.tounicode(element)
+        self.assertEqual(
+            result,
+            u'<p>This is a tag with \U000f0003 text.</p>')
+
+    def test_replace_unreplace_element(self):
+        replacer = TagPlaceholderReplacer(['p'], ['b'])
+
+        # Formatting tags get replaced, and the content remains
+        text = u'<p>This is a tag with <b>formatted</b> text.</p>'
+        element = etree.fromstring(text)
+        replacer.do_element(element)
+        replacer.undo_element(element)
+        result = etree.tounicode(element)
+        self.assertEqual(result, text)
+
+    def test_unreplace_in_text(self):
+        replacer = TagPlaceholderReplacer()
+        ph1 = replacer.get_placeholder(u'<i>Text</i>')
+        ph2 = replacer.get_placeholder(u'<b>%s</b>' % ph1)
+        ph3 = replacer.get_placeholder(u'<u>')
+        ph4 = replacer.get_placeholder(u'</u>')
+        res = replacer.undo_string(
+            u'Test %s %splaceholder%s' % (ph2, ph3, ph4))
+        self.assertEqual(res, u'Test <b><i>Text</i></b> <u>placeholder</u>')
+
+    def test_rml_bug(self):
+        before_diff = u"""<document>
+  <section>
+    <para>
+      <ref>4</ref>.
+      <u><b>At Will Employment</b></u>
+      .\u201cText\u201d
+    </para>
+  </section>
+</document>"""
+        tree = etree.fromstring(before_diff)
+        replacer = TagPlaceholderReplacer(text_tags=('para',),
+                                          formatting_tags=('b', 'u', 'i',))
+        replacer.do_tree(tree)
+        after_diff = u"""<document>
+  <section>
+    <para>
+      <insert>\U000f0001</insert>.
+      \U000f0004\U000f0002At Will Employment\U000f0003\U000f0005
+      .\u201cText\u201d
+    </para>
+  </section>
+</document>"""
+        tree = etree.fromstring(after_diff)
+        replacer.undo_tree(tree)
+        result = etree.tounicode(tree)
+        expected = u"""<document>
+  <section>
+    <para>
+      <insert><ref>4</ref></insert>.
+      <u><b>At Will Employment</b></u>
+      .\u201cText\u201d
+    </para>
+  </section>
+</document>"""
+        self.assertEqual(result, expected)
 
 
 class TestXMLFormat(unittest.TestCase):
@@ -230,10 +325,10 @@ class RMLFormatFileTest(FormatFileTest):
     formatter = RMLFormatter()
 
 
-# Add the common file-based tests
+# Add tests that use no placeholder replacement (ie plain XML)
 data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
 generate_filebased_tests(data_dir, XMLFormatFileTest)
 
-# Add tests using the placeholder (ie RML)
-data_dir = os.path.join(os.path.dirname(__file__), 'test_format_data')
+# Add tests that use placeholder replacement (ie RML)
+data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
 generate_filebased_tests(data_dir, RMLFormatFileTest, suffix='rml')
