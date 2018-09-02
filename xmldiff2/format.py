@@ -1,6 +1,7 @@
 import re
 import six
 
+from collections import namedtuple
 from copy import deepcopy
 from lxml import etree
 from xmldiff2.diff_match_patch import diff_match_patch
@@ -17,8 +18,16 @@ WS_TEXT = 'text'  # Normalize whitespace only inside text tags
 WS_TAGS = 'tags'  # Delete ignorable whitespace (between tags)
 WS_NONE = 'none'  # Preserve all whitespace
 
+# Placeholder tag type
+T_OPEN = 0
+T_CLOSE = 1
+T_SINGLE = 2
 
-class TagPlaceholderReplacer(object):
+
+PlaceholderEntry = namedtuple('PlaceholderEntry', 'element ttype close_ph')
+
+
+class PlaceholdererMaker(object):
     """Replace tags with unicode placeholders
 
     This class searches for certain tags in an XML tree and replaces them
@@ -30,113 +39,122 @@ class TagPlaceholderReplacer(object):
     The code can then unreplace the unicode placeholders with the tags.
     """
 
-    def __init__(self, text_tags=(), formatting_tags=(), normalize=WS_NONE):
+    def __init__(self, text_tags=(), formatting_tags=()):
         self.text_tags = text_tags
         self.formatting_tags = formatting_tags
-        self.normalize = normalize
-        self.placeholders2xml = {}
-        self.xml2placeholders = {}
+        self.placeholder2tag = {}
+        self.tag2placeholder = {}
         # This number represents the beginning of the largest private-use
         #  block (13,000 characters) in the unicode space.
         self.placeholder = 0xf0000
 
-    def get_placeholder(self, text):
-        if text in self.xml2placeholders:
-            return self.xml2placeholders[text]
+    def get_placeholder(self, element, ttype, close_ph):
+        tag = etree.tounicode(element)
+        ph = self.tag2placeholder.get((tag, ttype, close_ph))
+        if ph is not None:
+            return ph
 
         self.placeholder += 1
         ph = six.unichr(self.placeholder)
-        self.placeholders2xml[ph] = text
-        self.xml2placeholders[text] = ph
+        self.placeholder2tag[ph] = PlaceholderEntry(element, ttype, close_ph)
+        self.tag2placeholder[tag, ttype, close_ph] = ph
         return ph
+
+    def is_placeholder(self, char):
+        return len(char) == 1 and char in self.placeholder2tag
+
+    def is_formatting(self, element):
+        return element.tag in self.formatting_tags
 
     def do_element(self, element):
         for child in element:
             # Resolve all formatting text by allowing the inside text to
             # participate in the text diffing.
-            if child.tag in self.formatting_tags:
-                # If it's known text formatting tags, do this hierarchically.
-                # All other tags are replaced as single unknown units.
-                self.do_element(child)
-                attrs = ' '.join('%s="%s"' % attr
-                                 for attr in element.attrib.items())
-                if attrs:
-                    text = '<%s %s>' % (child.tag, attrs)
-                else:
-                    text = '<%s>' % child.tag
-                open_ph = self.get_placeholder(text)
-                close_ph = self.get_placeholder('</%s>' % child.tag)
+            tail = child.tail or u''
+            child.tail = u''
+            new_text = element.text or u''
 
-                element.text = ((element.text or u'') + open_ph +
-                                (child.text or u'') + close_ph +
-                                (child.tail or u''))
+            if self.is_formatting(child):
+                ph_close = self.get_placeholder(child, T_CLOSE, None)
+                ph_open = self.get_placeholder(child, T_OPEN, ph_close)
+                # If it's known text formatting tags, do this hierarchically
+                self.do_element(child)
+                text = child.text or u''
+                child.text = u''
+                # Stick the placeholder in instead of the start and end tags:
+                element.text = new_text + ph_open + text + ph_close + tail
             else:
-                # Replace the whole tag, with content:
-                tail = child.tail or u''
-                child.tail = None
-                text = etree.tounicode(child)
-                ph = self.get_placeholder(text)
-                element.text = (element.text or u'') + ph + tail
+                ph_single = self.get_placeholder(child, T_SINGLE, None)
+                # Replace the whole tag including content:
+                element.text = new_text + ph_single + tail
 
             # Remove the element from the tree now that we have inserted a
             # placeholder.
             element.remove(child)
-
-        if element.text is not None:
-            if self.normalize in (WS_BOTH, WS_TEXT):
-                element.text = cleanup_whitespace(element.text)
 
     def do_tree(self, tree):
         if self.text_tags:
             for elem in tree.xpath('//'+'|//'.join(self.text_tags)):
                 self.do_element(elem)
 
+    def split_string(self, text):
+        regexp = u'([%s])' % u''.join(self.placeholder2tag)
+        return re.split(regexp, text, flags=re.MULTILINE)
+
     def undo_string(self, text):
-        regexp = u'([%s])' % u''.join(self.placeholders2xml)
-        new_text = u''
-        for seg in re.split(regexp, text, flags=re.MULTILINE):
+        result = u''
+        segments = self.split_string(text)
+        while segments:
+            seg = segments.pop(0)
+
             # Segments can be either plain string or placeholders.
-            if len(seg) == 1 and seg in self.placeholders2xml:
-                new_text += self.placeholders2xml[seg]
+            if self.is_placeholder(seg):
+                entry = self.placeholder2tag[seg]
+                element = entry.element
+                # Is this a open/close segment?
+                if entry.ttype == T_OPEN:
+                    # Yup
+                    next_seg = segments.pop(0)
+                    new_text = u''
+                    while next_seg != entry.close_ph:
+                        new_text += next_seg
+                        next_seg = segments.pop(0)
+                    element.text = new_text
+
+                new_text = etree.tounicode(element)
+                result += self.undo_string(new_text)
             else:
-                new_text += seg
-
-        if new_text == text:
-            # Nothing left to replace
-            return new_text
-
-        # We can have multiple levels of things to replace here:
-        return self.undo_string(new_text)
+                result += seg
+        return result
 
     def undo_element(self, elem):
-        if self.placeholders2xml:
-
+        if self.placeholder2tag:
             if elem.text:
+                index = 0
                 new_text = self.undo_string(elem.text)
-                if new_text != elem.text:
-                    # Something was replaced, create the XML to insert.
-                    content = etree.fromstring(u'<wrap>%s</wrap>' % new_text)
-                    elem.text = content.text
-
-                    for child in content:
-                        elem.append(child)
-
-            if elem.tail:
-                new_text = self.undo_string(elem.tail)
-                if new_text != elem.tail:
-                    content = etree.fromstring(u'<wrap>%s</wrap>' % new_text)
-                    elem.tail = content.text
-                    parent = elem.getparent()
-                    for child in content:
-                        parent.append(child)
+                content = etree.fromstring(u'<wrap>%s</wrap>' % new_text)
+                elem.text = content.text
+                for child in content:
+                    self.undo_element(child)
+                    elem.insert(index, child)
+                    index += 1
 
             for child in elem:
                 self.undo_element(child)
 
+            if elem.tail:
+                new_text = self.undo_string(elem.tail)
+                content = etree.fromstring(u'<wrap>%s</wrap>' % new_text)
+                elem.tail = content.text
+                parent = elem.getparent()
+                index = parent.index(elem) + 1
+                for child in content:
+                    self.undo_element(child)
+                    parent.insert(index, child)
+                    index += 1
+
     def undo_tree(self, tree):
-        if self.text_tags:
-            for elem in tree.xpath('//'+'|//'.join(self.text_tags)):
-                self.undo_element(elem)
+        self.undo_element(tree)
 
 
 class XMLFormatter(object):
@@ -192,14 +210,34 @@ class XMLFormatter(object):
         self.remove_blank_text = pretty_print
         self.text_tags = text_tags
         self.formatting_tags = formatting_tags
-        self.placeholderer = TagPlaceholderReplacer(
-            text_tags=text_tags, formatting_tags=formatting_tags,
-            normalize=normalize)
+        self.placeholderer = PlaceholdererMaker(
+            text_tags=text_tags, formatting_tags=formatting_tags)
+
+        insert_elem = etree.Element('{%s}insert' % DIFF_NS)
+        insert_close = self.placeholderer.get_placeholder(
+            insert_elem, T_CLOSE, None)
+        insert_open = self.placeholderer.get_placeholder(
+            insert_elem, T_OPEN, insert_close)
+
+        delete_elem = etree.Element('{%s}delete' % DIFF_NS)
+        delete_close = self.placeholderer.get_placeholder(
+            delete_elem, T_CLOSE, None)
+        delete_open = self.placeholderer.get_placeholder(
+            delete_elem, T_OPEN, delete_close)
+
+        self.diff_tags = {
+            1: (insert_open, insert_close),
+            -1: (delete_open, delete_close)}
 
     def prepare(self, left_tree, right_tree):
         """prepare() is run on the trees before diffing
 
         This is so the formatter can apply magic before diffing."""
+        # The normalization should be done here.
+        # if element.text is not None:
+        #     if self.normalize in (WS_BOTH, WS_TEXT):
+        #         element.text = cleanup_whitespace(element.text)
+
         self.placeholderer.do_tree(left_tree)
         self.placeholderer.do_tree(right_tree)
 
@@ -335,11 +373,68 @@ class XMLFormatter(object):
         node = self._xpath(tree, action.node)
         self._update_attrib(node, action.name, action.value)
 
-    def _insert_text_node(self, node, action, text, pos):
-        new_node = node.makeelement('{%s}%s' % (DIFF_NS, action))
-        new_node.text = text
-        node.insert(pos, new_node)
-        return new_node
+    def _realign_placeholders(self, diff):
+        # Since the differ always deletes first and insert second,
+        # placeholders that represent XML open and close tags will get
+        # misaligned. This method will fix that order.
+        new_diff = []  # Diff list with proper tree structure.
+        stack = []  # Current node path.
+
+        def _stack_pop():
+            return stack.pop() if stack else (None, None)
+
+        for op, text in diff:
+            segments = self.placeholderer.split_string(text)
+            new_text = u''
+            for seg in segments:
+                if not seg:
+                    continue
+                # There is nothing to do for regular text.
+                if not self.placeholderer.is_placeholder(seg):
+                    new_text += seg
+                    continue
+                # Handle all structural replacement elements.
+                entry = self.placeholderer.placeholder2tag[seg]
+                if entry.ttype == T_SINGLE:
+                    # There is nothing to do for singletons since they are
+                    # fully self-contained.
+                    new_text += seg
+                    continue
+                elif entry.ttype == T_OPEN:
+                    # Opening tags are added to the stack, so we know what
+                    # needs to be closed when. We are assuming that tags are
+                    # opened in the desired order.
+                    stack.append((op, entry))
+                    new_text += seg
+                    continue
+                elif entry.ttype == T_CLOSE:
+                    # Due to the nature of the text diffing algorithm, closing
+                    # tags can be out of order. But since we know what we need
+                    # to close, we simply glean at the stack to know what
+                    # needs to be closed before the requested node closure can
+                    # happen.
+                    stack_op, stack_entry = _stack_pop()
+                    while (
+                            stack_entry is not None and
+                            stack_entry.close_ph != seg
+                           ):
+                        new_diff.append((stack_op, stack_entry.close_ph))
+                        stack_op, stack_entry = _stack_pop()
+
+                    # We have situations where the opening tag remains in
+                    # place but the closing text moves from on position to
+                    # another. In those cases, we will have two closing tags
+                    # for one opening one. Since we want to prefer the new
+                    # version over the old in terms of formatting, we ignore
+                    # the deletion and close the tag where it was inserted.
+                    if stack_entry is not None:
+                        if stack_op > op:
+                            stack.append((stack_op, stack_entry))
+                        else:
+                            new_text += seg
+            if new_text:
+                new_diff.append((op, new_text))
+        return new_diff
 
     def _make_diff_tags(self, left_value, right_value, node, target=None):
         if self.normalize in (WS_BOTH, WS_TAGS):
@@ -350,26 +445,53 @@ class XMLFormatter(object):
         diff = text_diff.diff_main(left_value or '', right_value or '')
         text_diff.diff_cleanupSemantic(diff)
 
-        cur_child = None
+        diff = self._realign_placeholders(diff)
 
+        cur_child = None
         if target is None:
             target = node
-            pos = 0
         else:
-            pos = target.index(node) + 1
+            cur_child = node
 
         for op, text in diff:
             if op == 0:
                 if cur_child is None:
-                    node.text = text
+                    node.text = (node.text or u'') + text
                 else:
-                    cur_child.tail = text
-            elif op == -1:
-                cur_child = self._insert_text_node(target, 'delete', text, pos)
-                pos += 1
-            elif op == 1:
-                cur_child = self._insert_text_node(target, 'insert', text, pos)
-                pos += 1
+                    cur_child.tail = (cur_child.tail or u'') + text
+
+            elif self.placeholderer.is_placeholder(text):
+                if op == -1:
+                    action = 'delete'
+                elif op == 1:
+                    action = 'insert'
+
+                entry = self.placeholderer.placeholder2tag[text]
+                if entry.ttype == T_CLOSE:
+                    ph = text
+                else:
+                    # Mark the tag as having a diff-action. We do need to
+                    # make a copy of it and get a new placeholder:
+                    elem = entry.element
+                    if self.placeholderer.is_formatting(elem):
+                        action += '-formatting'
+                    elem = deepcopy(elem)
+                    elem.attrib['{%s}%s' % (DIFF_NS, action)] = ''
+                    ph = self.placeholderer.get_placeholder(elem, entry.ttype,
+                                                            entry.close_ph)
+
+                if cur_child is None:
+                    node.text = (node.text or u'') + ph
+                else:
+                    cur_child.tail = (cur_child.tail or u'') + ph
+
+            else:
+                openph, closeph = self.diff_tags[op]
+                if cur_child is None:
+                    node.text = (node.text or u'') + openph + text + closeph
+                else:
+                    cur_child.tail = ((cur_child.tail or u'') + openph +
+                                      text + closeph)
 
     def _handle_UpdateTextIn(self, action, tree):
         node = self._xpath(tree, action.node)
