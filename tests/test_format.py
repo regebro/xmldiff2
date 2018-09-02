@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 import os
 import re
 import unittest
@@ -7,13 +8,138 @@ from lxml import etree
 from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
                            DeleteAttrib, UpdateTextAfter)
-from xmldiff2.format import XMLFormatter, RMLFormatter, WS_TEXT
+from xmldiff2.format import (WS_TEXT, XMLFormatter,
+                             RMLFormatter, PlaceholdererMaker,
+                             DIFF_NS, DIFF_PREFIX, T_OPEN, T_CLOSE)
 from xmldiff2.main import diff_texts, diff_trees, diff_files
 
 from .utils import make_test_function, generate_filebased_tests
 
 START = u'<document xmlns:diff="http://namespaces.shoobx.com/diff"><node'
 END = u'</node></document>'
+
+
+class TestTagPlaceholderReplacer(unittest.TestCase):
+
+    def test_get_placeholder(self):
+        replacer = PlaceholdererMaker()
+        # Get a placeholder:
+        ph = replacer.get_placeholder(etree.Element('tag'), T_OPEN, None)
+        self.assertEqual(ph, u'\U000f0005')
+        # Do it again:
+        ph = replacer.get_placeholder(etree.Element('tag'), T_OPEN, None)
+        self.assertEqual(ph, u'\U000f0005')
+        # Get another one
+        ph = replacer.get_placeholder(etree.Element('tag'), T_CLOSE, ph)
+        self.assertEqual(ph, u'\U000f0006')
+
+    def test_do_element(self):
+        replacer = PlaceholdererMaker(['p'], ['b'])
+
+        # Formatting tags get replaced, and the content remains
+        text = u'<p>This is a tag with <b>formatted</b> text.</p>'
+        element = etree.fromstring(text)
+        replacer.do_element(element)
+
+        self.assertEqual(
+            etree.tounicode(element),
+            u'<p>This is a tag with \U000f0006formatted\U000f0005 text.</p>')
+
+        replacer.undo_element(element)
+        self.assertEqual(etree.tounicode(element), text)
+
+        # Non formatting tags get replaced with content
+        text = u'<p>This is a tag with <foo>formatted</foo> text.</p>'
+        element = etree.fromstring(text)
+        replacer.do_element(element)
+        result = etree.tounicode(element)
+        self.assertEqual(
+            result,
+            u'<p>This is a tag with \U000f0007 text.</p>')
+
+        # Single formatting tags still get two placeholders.
+        text = u'<p>This is a <b/> with <foo/> text.</p>'
+        element = etree.fromstring(text)
+        replacer.do_element(element)
+        result = etree.tounicode(element)
+        self.assertEqual(
+            result,
+            u'<p>This is a \U000f0009\U000f0008 with \U000f000a text.</p>')
+
+    def test_do_undo_element(self):
+        replacer = PlaceholdererMaker(['p'], ['b'])
+
+        # Formatting tags get replaced, and the content remains
+        text = u'<p>This <is/> a <f>tag</f> with <b>formatted</b> text.</p>'
+        element = etree.fromstring(text)
+        replacer.do_element(element)
+
+        self.assertEqual(
+            element.text,
+            u'This \U000f0005 a \U000f0006 with \U000f0008formatted\U000f0007 text.')
+
+        replacer.undo_element(element)
+        result = etree.tounicode(element)
+        self.assertEqual(result, text)
+
+    def test_do_undo_element_double_format(self):
+        replacer = PlaceholdererMaker(['p'], ['b', 'u'])
+
+        # Formatting tags get replaced, and the content remains
+        text = u'<p>This is <u>doubly <b>formatted</b></u> text.</p>'
+        element = etree.fromstring(text)
+        replacer.do_element(element)
+
+        self.assertEqual(
+            element.text,
+            u'This is \U000f0006doubly \U000f0008formatted\U000f0007\U000f0005 text.')
+
+        replacer.undo_element(element)
+        result = etree.tounicode(element)
+        self.assertEqual(result, text)
+
+    def test_rml_bug(self):
+        etree.register_namespace(DIFF_PREFIX, DIFF_NS)
+        before_diff = u"""<document xmlns:diff="http://namespaces.shoobx.com/diff">
+  <section>
+    <para>
+      <ref>4</ref>.
+      <u><b>At Will Employment</b></u>
+      .\u201cText\u201d
+    </para>
+  </section>
+</document>"""
+        tree = etree.fromstring(before_diff)
+        replacer = PlaceholdererMaker(text_tags=('para',),
+                                      formatting_tags=('b', 'u', 'i',))
+        replacer.do_tree(tree)
+        after_diff = u"""<document xmlns:diff="http://namespaces.shoobx.com/diff">
+  <section>
+    <para>
+      <insert>\U000f0005</insert>.
+      \U000f0007\U000f0009At Will Employment\U000f0008\U000f0006
+      .\u201c<insert>New </insert>Text\u201d
+    </para>
+  </section>
+</document>"""
+
+        # The diff formatting will find some text to insert.
+        delete_attrib = u'{%s}delete-format' % DIFF_NS
+        replacer.placeholder2tag[u'\U000f0006'].element.attrib[delete_attrib] = ''
+        replacer.placeholder2tag[u'\U000f0007'].element.attrib[delete_attrib] = ''
+        tree = etree.fromstring(after_diff)
+        replacer.undo_tree(tree)
+        result = etree.tounicode(tree)
+        expected = u"""<document xmlns:diff="http://namespaces.shoobx.com/diff">
+  <section>
+    <para>
+      <insert><ref>4</ref></insert>.
+      <u diff:delete-format=""><b>At Will Employment</b></u>
+      .\u201c<insert>New </insert>Text\u201d
+    </para>
+  </section>
+</document>"""
+        self.assertEqual(result, expected)
 
 
 class TestXMLFormat(unittest.TestCase):
@@ -127,17 +253,18 @@ class TestXMLFormat(unittest.TestCase):
         action = UpdateTextIn('/document/node', 'Also a bit of text, rick')
         expected = START + u'><diff:delete>This is</diff:delete><diff:insert>' \
             'Also</diff:insert> a bit of text, ri<diff:delete>ght' \
-            '</diff:delete><diff:insert>ck</diff:insert></node></document>'
+            '</diff:delete><diff:insert>ck</diff:insert>' + END
 
         self._format_test(left, action, expected)
 
-    def test_update_text_after(self):
+    def test_update_text_after_1(self):
         left = u'<document><node/><node/></document>'
         action = UpdateTextAfter('/document/node[1]', 'Text')
         expected = START + u'/><diff:insert>Text</diff:insert><node/></document>'
 
         self._format_test(left, action, expected)
 
+    def test_update_text_after_2(self):
         left = u'<document><node/>This is a bit of text, right</document>'
         action = UpdateTextAfter('/document/node', 'Also a bit of text, rick')
         expected = START + u'/><diff:delete>This is</diff:delete><diff:insert>' \
@@ -230,10 +357,10 @@ class RMLFormatFileTest(FormatFileTest):
     formatter = RMLFormatter()
 
 
-# Add the common file-based tests
+# Add tests that use no placeholder replacement (ie plain XML)
 data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
 generate_filebased_tests(data_dir, XMLFormatFileTest)
 
-# Add tests using the placeholder (ie RML)
-data_dir = os.path.join(os.path.dirname(__file__), 'test_format_data')
+# Add tests that use placeholder replacement (ie RML)
+data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
 generate_filebased_tests(data_dir, RMLFormatFileTest, suffix='rml')

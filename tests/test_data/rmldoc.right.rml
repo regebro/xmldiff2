@@ -1,4 +1,4 @@
-<document xmlns:app="http://namespaces.shoobx.com/application" xmlns:preview="http://namespaces.shoobx.com/preview" xmlns:diff="http://namespaces.shoobx.com/diff" filename="offer-letter.pdf" title="Offer Letter" subject="Legal Document" author="Shoobx, Inc." creator="Shoobx, Inc.">
+<document xmlns:app="http://namespaces.shoobx.com/application" xmlns:preview="http://namespaces.shoobx.com/preview" filename="offer-letter.pdf" title="Offer Letter" subject="Legal Document" author="Shoobx, Inc." creator="Shoobx, Inc.">
 
   <docinit>
     <registerTTFont faceName="Garamond" fileName="[shoobx.app]/resources/Garamond/AGaramondPro-Regular.ttf"/>
@@ -224,7 +224,7 @@
           
         </para>
         <para>
-          Dear <app:placeholder field="ol.employee_fullname"><diff:delete>First</diff:delete><diff:insert>Second</diff:insert> Name</app:placeholder>:
+          Dear <app:placeholder field="ol.employee_fullname">Second Name</app:placeholder>:
         </para>
         <!--I have checked wage and hours laws only for NH, MA, NY, IL, TX,
             CA, DE and WA, but will need to look at other states when there
@@ -297,26 +297,18 @@
         </para>
       </app:section>
 
-      <diff:delete>
-
-      
-
-      
-
-      
-
-      </diff:delete><app:section diff:insert="" hidden="false" diff:add-attr="hidden;name;ref;removed;single-ref;title" name="sign" ref="3" removed="false" single-ref="3" title="Signing Bonus"><diff:insert>
-        </diff:insert><app:term diff:insert="" name="sign_bonus" diff:add-attr="name;set" set="ol"/><diff:insert>
+      <app:section ref="3" single-ref="3" name="sign" title="Signing Bonus" hidden="false" removed="false">
+        <app:term name="sign_bonus" set="ol"/>
         
-            </diff:insert><para diff:insert=""><diff:insert>
-              </diff:insert><app:ref diff:insert="" name="sign" diff:add-attr="name;{http://namespaces.shoobx.com/preview}body" preview:body="&lt;Ref&gt;"><diff:insert>3</diff:insert></app:ref><diff:insert>. </diff:insert><u diff:insert=""><b diff:insert=""><diff:insert>Signing Bonus</diff:insert></b></u><diff:insert>.
-              You will also be paid a </diff:insert><app:placeholder diff:insert="" field="ol.sign_bonus_include_amt" diff:add-attr="field;missing" missing="Signing Bonus Amount"/><diff:insert> signing
+            <para>
+              <app:ref name="sign" preview:body="&lt;Ref&gt;">3</app:ref>. <u><b>Signing Bonus</b></u>.
+              You will also be paid a <app:placeholder field="ol.sign_bonus_include_amt" missing="Signing Bonus Amount"/> signing
               bonus, which will be paid on the next regularly scheduled pay date
               after you start employment with the Company.
               
-            </diff:insert></para><diff:insert>
+            </para>
         
-      </diff:insert></app:section><diff:insert>
+      </app:section>
 
       
 
@@ -324,7 +316,7 @@
 
       
 
-      </diff:insert><!--added new field/choice/metadata for PTO with 3 options, accrued,
+      <!--added new field/choice/metadata for PTO with 3 options, accrued,
           open-ended or custom-->
 
       <!--NOTE the open-ended option should only be available for exempt
@@ -332,17 +324,17 @@
 
       
 
-      <app:section ref="4" single-ref="4" name="withholding_taxes" title="Withholding Taxes" hidden="false" removed="false" diff:update-attr="ref:3;single-ref:3">
+      <app:section ref="4" single-ref="4" name="withholding_taxes" title="Withholding Taxes" hidden="false" removed="false">
         <para>
-          <app:ref name="withholding_taxes" preview:body="&lt;Ref&gt;"><diff:delete>3</diff:delete><diff:insert>4</diff:insert></app:ref>. <u><b>Withholding Taxes</b></u>.
+          <app:ref name="withholding_taxes" preview:body="&lt;Ref&gt;">4</app:ref>. <u><b>Withholding Taxes</b></u>.
           All forms of compensation referred to in this letter are subject to
           all of the required and elected taxes and withholdings.
         </para>
       </app:section>
 
-      <app:section ref="5" single-ref="5" name="at_will" title="At Will Employment" hidden="false" removed="false" diff:update-attr="ref:4;single-ref:4">
+      <app:section ref="5" single-ref="5" name="at_will" title="At Will Employment" hidden="false" removed="false">
         <para>
-          <app:ref name="at_will" preview:body="&lt;Ref&gt;"><diff:delete>4</diff:delete><diff:insert>5</diff:insert></app:ref>. <u><b>At Will Employment</b></u>.
+          <app:ref name="at_will" preview:body="&lt;Ref&gt;">5</app:ref>. <u><b>At Will Employment</b></u>.
           Your employment with the Company is “at-will” and either you or the
           Company may terminate your employment at any time, with or without
           cause or advance notice. As a result, nothing in this letter is a
@@ -362,9 +354,9 @@
         </para>
       </app:section>
 
-      <app:section ref="6" single-ref="6" name="confidentiality_agreement" title="Confidentiality and Assignment Agreement" hidden="false" removed="false" diff:update-attr="ref:5;single-ref:5">
+      <app:section ref="6" single-ref="6" name="confidentiality_agreement" title="Confidentiality and Assignment Agreement" hidden="false" removed="false">
         <para>
-          <app:ref name="confidentiality_agreement" preview:body="&lt;Ref&gt;"><diff:delete>5</diff:delete><diff:insert>6</diff:insert></app:ref>.
+          <app:ref name="confidentiality_agreement" preview:body="&lt;Ref&gt;">6</app:ref>.
           <u><b>Confidentiality and Assignment Agreement</b></u>.
           The Company views the protection of its trade secrets and other
           confidential and proprietary information, such as customer or
@@ -397,9 +389,9 @@
         </para>
       </app:section>
 
-      <app:section ref="7" single-ref="7" name="work_authorization" title="Work Authorization" allowCustom="False" hidden="false" removed="false" diff:update-attr="ref:6;single-ref:6">
+      <app:section ref="7" single-ref="7" name="work_authorization" title="Work Authorization" allowCustom="False" hidden="false" removed="false">
         <para>
-          <app:ref name="work_authorization" preview:body="&lt;Ref&gt;"><diff:delete>6</diff:delete><diff:insert>7</diff:insert></app:ref>.
+          <app:ref name="work_authorization" preview:body="&lt;Ref&gt;">7</app:ref>.
           <u><b>Work Authorization</b></u>.
           Under federal immigration laws, the Company is required to verify
           each new employee's identity and legal authority to work in the
@@ -417,9 +409,9 @@
 
       <!--there is a note for CA based employees and i included a note in help
           text.-->
-      <app:section ref="8" single-ref="8" name="company_policies" title="Company Policies and Procedures" hidden="false" removed="false" diff:update-attr="ref:7;single-ref:7">
+      <app:section ref="8" single-ref="8" name="company_policies" title="Company Policies and Procedures" hidden="false" removed="false">
         <para>
-          <app:ref name="company_policies" preview:body="&lt;Ref&gt;"><diff:delete>7</diff:delete><diff:insert>8</diff:insert></app:ref>.
+          <app:ref name="company_policies" preview:body="&lt;Ref&gt;">8</app:ref>.
           <u><b>Company Policies and Procedures</b></u>.
           As an employee of the Company, you will be required to comply with
           (a) all Company policies and procedures and (b) all laws and
@@ -429,11 +421,11 @@
         </para>
       </app:section>
 
-    <app:section ref="9" single-ref="9" name="reference_check" title="Background/Reference Checks" hidden="false" removed="false" diff:update-attr="ref:8;single-ref:8">
+    <app:section ref="9" single-ref="9" name="reference_check" title="Background/Reference Checks" hidden="false" removed="false">
       <app:term name="background" set="ol"/>
       
           <para>
-            <app:ref name="reference_check" preview:body="&lt;Ref&gt;"><diff:delete>8</diff:delete><diff:insert>9</diff:insert></app:ref>.
+            <app:ref name="reference_check" preview:body="&lt;Ref&gt;">9</app:ref>.
             <u><b>Background/Reference Checks</b></u>.
             
               You may need to complete an employment application or allow the
@@ -447,9 +439,9 @@
         
       </app:section>
 
-      <app:section ref="10" single-ref="10" name="electronic_delivery" title="Electronic Delivery" hidden="false" removed="false" diff:update-attr="ref:9;single-ref:9">
+      <app:section ref="10" single-ref="10" name="electronic_delivery" title="Electronic Delivery" hidden="false" removed="false">
         <para>
-          <app:ref name="electronic_delivery" preview:body="&lt;Ref&gt;"><diff:delete>9</diff:delete><diff:insert>10</diff:insert></app:ref>.
+          <app:ref name="electronic_delivery" preview:body="&lt;Ref&gt;">10</app:ref>.
           <u><b>Electronic Delivery</b></u>.
           The Company may, in its sole discretion, decide to deliver to you by
           email or any other electronic means any documents or notices related
@@ -463,9 +455,9 @@
         </para>
       </app:section>
 
-      <app:section ref="11" single-ref="11" name="integration" title="Integration" hidden="false" removed="false" diff:update-attr="ref:10;single-ref:10">
+      <app:section ref="11" single-ref="11" name="integration" title="Integration" hidden="false" removed="false">
         <para>
-          <app:ref name="integration" preview:body="&lt;Ref&gt;">1<diff:delete>0</diff:delete><diff:insert>1</diff:insert></app:ref>. <u><b>Integration</b></u>.
+          <app:ref name="integration" preview:body="&lt;Ref&gt;">11</app:ref>. <u><b>Integration</b></u>.
           This offer letter and the agreements, policies, rules and procedures
           referenced herein are our complete understanding regarding your
           employment with the Company. Accordingly, it supersedes and
@@ -482,7 +474,7 @@
         </app:term>
         
       </app:section>
-      <app:section ref="12" single-ref="12" name="signature" title="Signature Blocks" allowCustom="False" hidden="false" removed="false" diff:update-attr="ref:11;single-ref:11">
+      <app:section ref="12" single-ref="12" name="signature" title="Signature Blocks" allowCustom="False" hidden="false" removed="false">
           <app:term name="offer_expiration" set="ol"/>
       <para>
 		We are very excited about you joining our team and know that you will 
