@@ -1,3 +1,4 @@
+import json
 import re
 import six
 
@@ -273,7 +274,7 @@ class XMLFormatter(object):
         This is so the formatter cab apply magic after diffing."""
         self.placeholderer.undo_tree(result_tree)
 
-    def format(self, orig_tree, diff):
+    def format(self, diff, orig_tree):
         # Make a new tree, both because we want to add the diff namespace
         # and also because we don't want to modify the original tree.
 
@@ -540,3 +541,52 @@ class RMLFormatter(XMLFormatter):
             pretty_print=pretty_print, remove_blank_text=remove_blank_text,
             normalize=normalize, text_tags=text_tags,
             formatting_tags=formatting_tags)
+
+
+class DiffFormatter(object):
+
+    # Nothing to prepare or finalize, we could put in normalizing here maybe
+    def prepare(self, left, right): return
+
+    def finalize(self, left, right): return
+
+    def format(self, diff, orig_tree):
+        # This Formatter don't need the left tree, but the XMLFormatter
+        # does, so the parameter is required.
+        res = '\n'.join('[%s]' % self.handle_action(action) for action in diff)
+        return res + '\n'
+
+    def handle_action(self, action):
+        action_type = type(action)
+        method = getattr(self, '_handle_' + action_type.__name__)
+        return ', '.join(method(action))
+
+    def _handle_DeleteAttrib(self, action):
+        return "delete-attribute", action.node, action.name
+
+    def _handle_DeleteNode(self, action):
+        return "delete", action.node
+
+    def _handle_InsertAttrib(self, action):
+        return ("insert-attribute", action.target, action.name,
+                json.dumps(action.value))
+
+    def _handle_InsertNode(self, action):
+        return "insert", action.target, action.tag, str(action.position)
+
+    def _handle_MoveAttrib(self, action):
+        return ("move-attribute", action.source, action.target,
+                action.oldname, action.newname)
+
+    def _handle_MoveNode(self, action):
+        return "move", action.source, action.target, str(action.position)
+
+    def _handle_UpdateAttrib(self, action):
+        return ("update-attribute", action.node, action.name,
+                json.dumps(action.value))
+
+    def _handle_UpdateTextIn(self, action):
+        return "update-text", action.node, json.dumps(action.text)
+
+    def _handle_UpdateTextAfter(self, action):
+        return "update-text-after", action.node, json.dumps(action.text)

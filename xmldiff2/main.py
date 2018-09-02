@@ -15,7 +15,7 @@ def diff_trees(left_tree, right_tree, F=0.5, uniqueattrs=None, formatter=None):
     diffs = differ.diff(left_tree, right_tree)
     if formatter is None:
         return list(diffs)
-    return formatter.format(left_tree, diffs)
+    return formatter.format(diffs, left_tree)
 
 
 def diff_texts(left, right, F=0.5, uniqueattrs=None, formatter=None):

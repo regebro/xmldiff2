@@ -8,7 +8,7 @@ from lxml import etree
 from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
                            DeleteAttrib, UpdateTextAfter)
-from xmldiff2.format import (WS_TEXT, XMLFormatter,
+from xmldiff2.format import (WS_TEXT, XMLFormatter, DiffFormatter,
                              RMLFormatter, PlaceholdererMaker,
                              DIFF_NS, DIFF_PREFIX, T_OPEN, T_CLOSE)
 from xmldiff2.main import diff_texts, diff_trees, diff_files
@@ -146,7 +146,7 @@ class TestXMLFormat(unittest.TestCase):
 
     def _format_test(self, left, action, expected):
         formatter = XMLFormatter(pretty_print=False)
-        result = formatter.format(etree.fromstring(left), [action])
+        result = formatter.format([action], etree.fromstring(left))
         self.assertEqual(result, expected)
 
     def test_incorrect_xpaths(self):
@@ -272,6 +272,89 @@ class TestXMLFormat(unittest.TestCase):
             '</diff:delete><diff:insert>ck</diff:insert></document>'
 
         self._format_test(left, action, expected)
+
+
+class TestDiffFormat(unittest.TestCase):
+
+    def _format_test(self, action, expected):
+        formatter = DiffFormatter()
+        result = formatter.format([action], None)
+        self.assertEqual(result, expected)
+
+    def test_del_attr(self):
+        action = DeleteAttrib('/document/node', 'a')
+        expected ='[delete-attribute, /document/node, a]\n'
+        self._format_test(action, expected)
+
+    def test_del_node(self):
+        action = DeleteNode('/document/node')
+        expected = '[delete, /document/node]\n'
+        self._format_test(action, expected)
+
+    def test_del_text(self):
+        action = UpdateTextIn('/document/node', None)
+        expected = '[update-text, /document/node, null]\n'
+        self._format_test(action, expected)
+
+    def test_insert_attr(self):
+        action = InsertAttrib('/document/node', 'attr', 'val')
+        expected = '[insert-attribute, /document/node, attr, "val"]\n'
+        self._format_test(action, expected)
+
+    def test_insert_node(self):
+        action = InsertNode('/document', 'node', 0)
+        expected = '[insert, /document, node, 0]\n'
+        self._format_test(action, expected)
+
+    def test_move_attr(self):
+        # The library currently only uses move attr for when attributes are
+        # renamed:
+        action = MoveAttrib('/document/node', '/document/node', 'attr', 'bottr')
+        expected = '[move-attribute, /document/node, /document/node, attr, bottr]\n'
+        self._format_test(action, expected)
+
+        # But it could conceivably be used to move attributes between nodes.
+        # So we test that as well:
+        action = MoveAttrib('/document/node', '/document/node/b',
+                            'attr', 'attr')
+        expected = '[move-attribute, /document/node, /document/node/b, attr, attr]\n'
+        self._format_test(action, expected)
+
+    def test_move_node(self):
+        # Move 1 down
+        action = MoveNode('/document/node[1]', '/document', 1)
+        expected = '[move, /document/node[1], /document, 1]\n'
+        self._format_test(action, expected)
+
+        # Move 2 up (same result, different diff)
+        action = MoveNode('/document/node[2]', '/document', 0)
+        expected = '[move, /document/node[2], /document, 0]\n'
+
+        self._format_test(action, expected)
+
+    def test_update_attr(self):
+        action = UpdateAttrib('/document/node', 'attr', 'newval')
+        expected = '[update-attribute, /document/node, attr, "newval"]\n'
+        self._format_test(action, expected)
+
+    def test_update_text_in(self):
+        action = UpdateTextIn('/document/node', 'Text')
+        expected = '[update-text, /document/node, "Text"]\n'
+        self._format_test(action, expected)
+
+        action = UpdateTextIn('/document/node', 'Also a bit of text, "rick"')
+        expected = '[update-text, /document/node, "Also a bit of text, \\"rick\\""]\n'
+        self._format_test(action, expected)
+
+    def test_update_text_after_1(self):
+        action = UpdateTextAfter('/document/node[1]', 'Text')
+        expected = '[update-text-after, /document/node[1], "Text"]\n'
+        self._format_test(action, expected)
+
+    def test_update_text_after_2(self):
+        action = UpdateTextAfter('/document/node', 'Also a bit of text, rick')
+        expected = '[update-text-after, /document/node, "Also a bit of text, rick"]\n'
+        self._format_test(action, expected)
 
 
 class FormatFileTest(unittest.TestCase):
