@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 import os
+import types
 import unittest
 
 from lxml import etree
@@ -286,27 +287,27 @@ class DiffFormatTests(unittest.TestCase):
 
     def test_del_attr(self):
         action = diff.DeleteAttrib('/document/node', 'a')
-        expected = '[delete-attribute, /document/node, a]\n'
+        expected = '[delete-attribute, /document/node, a]'
         self._format_test(action, expected)
 
     def test_del_node(self):
         action = diff.DeleteNode('/document/node')
-        expected = '[delete, /document/node]\n'
+        expected = '[delete, /document/node]'
         self._format_test(action, expected)
 
     def test_del_text(self):
         action = diff.UpdateTextIn('/document/node', None)
-        expected = '[update-text, /document/node, null]\n'
+        expected = '[update-text, /document/node, null]'
         self._format_test(action, expected)
 
     def test_insert_attr(self):
         action = diff.InsertAttrib('/document/node', 'attr', 'val')
-        expected = '[insert-attribute, /document/node, attr, "val"]\n'
+        expected = '[insert-attribute, /document/node, attr, "val"]'
         self._format_test(action, expected)
 
     def test_insert_node(self):
         action = diff.InsertNode('/document', 'node', 0)
-        expected = '[insert, /document, node, 0]\n'
+        expected = '[insert, /document, node, 0]'
         self._format_test(action, expected)
 
     def test_move_attr(self):
@@ -315,7 +316,7 @@ class DiffFormatTests(unittest.TestCase):
         action = diff.MoveAttrib('/document/node', '/document/node',
                                  'attr', 'bottr')
         expected = '[move-attribute, /document/node, /document/node, '\
-            u'attr, bottr]\n'
+            u'attr, bottr]'
         self._format_test(action, expected)
 
         # But it could conceivably be used to move attributes between nodes.
@@ -323,47 +324,47 @@ class DiffFormatTests(unittest.TestCase):
         action = diff.MoveAttrib('/document/node', '/document/node/b',
                                  'attr', 'attr')
         expected = '[move-attribute, /document/node, /document/node/b, '\
-            u'attr, attr]\n'
+            u'attr, attr]'
         self._format_test(action, expected)
 
     def test_move_node(self):
         # Move 1 down
         action = diff.MoveNode('/document/node[1]', '/document', 1)
-        expected = '[move, /document/node[1], /document, 1]\n'
+        expected = '[move, /document/node[1], /document, 1]'
         self._format_test(action, expected)
 
         # Move 2 up (same result, different diff)
         action = diff.MoveNode('/document/node[2]', '/document', 0)
-        expected = '[move, /document/node[2], /document, 0]\n'
+        expected = '[move, /document/node[2], /document, 0]'
 
         self._format_test(action, expected)
 
     def test_update_attr(self):
         action = diff.UpdateAttrib('/document/node', 'attr', 'newval')
-        expected = '[update-attribute, /document/node, attr, "newval"]\n'
+        expected = '[update-attribute, /document/node, attr, "newval"]'
         self._format_test(action, expected)
 
     def test_update_text_in(self):
         action = diff.UpdateTextIn('/document/node', 'Text')
-        expected = '[update-text, /document/node, "Text"]\n'
+        expected = '[update-text, /document/node, "Text"]'
         self._format_test(action, expected)
 
         action = diff.UpdateTextIn('/document/node',
                                    'Also a bit of text, "rick"')
         expected = '[update-text, /document/node, '\
-            u'"Also a bit of text, \\"rick\\""]\n'
+            u'"Also a bit of text, \\"rick\\""]'
         self._format_test(action, expected)
 
     def test_update_text_after_1(self):
         action = diff.UpdateTextAfter('/document/node[1]', 'Text')
-        expected = '[update-text-after, /document/node[1], "Text"]\n'
+        expected = '[update-text-after, /document/node[1], "Text"]'
         self._format_test(action, expected)
 
     def test_update_text_after_2(self):
         action = diff.UpdateTextAfter('/document/node',
                                       'Also a bit of text, rick')
         expected = '[update-text-after, /document/node, '\
-            u'"Also a bit of text, rick"]\n'
+            u'"Also a bit of text, rick"]'
         self._format_test(action, expected)
 
 

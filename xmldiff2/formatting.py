@@ -14,15 +14,53 @@ DIFF_NS = 'http://namespaces.shoobx.com/diff'
 DIFF_PREFIX = 'diff'
 
 # Flags for whitespace handling in the text aware formatters:
-WS_BOTH = 'both'  # Normalize ignorable whitespace and text whitespace
-WS_TEXT = 'text'  # Normalize whitespace only inside text tags
-WS_TAGS = 'tags'  # Delete ignorable whitespace (between tags)
-WS_NONE = 'none'  # Preserve all whitespace
+WS_BOTH = 3  # Normalize ignorable whitespace and text whitespace
+WS_TEXT = 2  # Normalize whitespace only inside text tags
+WS_TAGS = 1  # Delete ignorable whitespace (between tags)
+WS_NONE = 0  # Preserve all whitespace
 
 # Placeholder tag type
 T_OPEN = 0
 T_CLOSE = 1
 T_SINGLE = 2
+
+
+# These Bases can be abstract baseclasses, but it's a pain to support
+# Python 2.7 in that case, because there is no abc.ABC. Right now this
+# is just a description of the API.
+
+class BaseFormatter(object):
+
+    def __init__(self, normalize=WS_TAGS, pretty_print=False):
+        """Formatters must as a minimum have a normalize parameter
+
+        This is used by the main API to decide is whitespace between the
+        tags should be stripped (the remove_blank_text flag in lxml) and
+        if tags that are known texts tags should be normalized before
+        comparing. String content in non-text tags will not be
+        normalized with the included formatters.
+
+        pretty_print is used to choose between a compact and a pretty output.
+        This is currently only used by the XML and RML formatters.
+
+        Formatters may of course have more options than these, but these
+        two are the ones that can be set from the command line.
+        """
+
+    def prepare(self, left_tree, right_tree):
+        """Allows the formatter to prepare the trees before diffing
+
+        That preparing may need some "unpreparing", but it's then done
+        by the formatters format() method, and is not a part of the
+        public interface."""
+
+    def format(self, diff, orig_tree):
+        """Formats the diff and returns a unicode string
+
+        A formatter that returns XML with diff markup will need the original
+        tree available to do it's job, so there is an orig_tree parameter,
+        but it may be ignored by differs that don't need it.
+        """
 
 
 PlaceholderEntry = namedtuple('PlaceholderEntry', 'element ttype close_ph')
@@ -200,7 +238,7 @@ class PlaceholderMaker(object):
         return open_ph + text + close_ph
 
 
-class XMLFormatter(object):
+class XMLFormatter(BaseFormatter):
     """A formatter that also replaces formatting tags with unicode characters
 
     The idea of this differ is to replace structured content (in this case XML
@@ -241,16 +279,16 @@ class XMLFormatter(object):
     structural content before formatting.
 
     The ``normalize`` parameter decides how to normalize whitespace.
-    WS_BOTH normalizes all whitespace in all texts, WS_TEXT normalizes only
-    inside text_tags, WS_NONE will preserve all whitespace.
+    WS_TEXT normalizes only inside text_tags, WS_TAGS will remove ignorable
+    whitespace between tags, WS_BOTH do both, and WS_NONE will preserve
+    all whitespace.
     """
 
-    def __init__(self, pretty_print=True, remove_blank_text=False,
-                 normalize=WS_NONE, text_tags=(), formatting_tags=()):
+    def __init__(self, normalize=WS_NONE, pretty_print=True,
+                 text_tags=(), formatting_tags=()):
         # Mapping from placeholders -> structural content and vice versa.
         self.normalize = normalize
         self.pretty_print = pretty_print
-        self.remove_blank_text = pretty_print
         self.text_tags = text_tags
         self.formatting_tags = formatting_tags
         self.placeholderer = PlaceholderMaker(
@@ -260,11 +298,6 @@ class XMLFormatter(object):
         """prepare() is run on the trees before diffing
 
         This is so the formatter can apply magic before diffing."""
-        # The normalization should be done here.
-        # if element.text is not None:
-        #     if self.normalize in (WS_BOTH, WS_TEXT):
-        #         element.text = cleanup_whitespace(element.text)
-
         self.placeholderer.do_tree(left_tree)
         self.placeholderer.do_tree(right_tree)
 
@@ -466,7 +499,7 @@ class XMLFormatter(object):
         return new_diff
 
     def _make_diff_tags(self, left_value, right_value, node, target=None):
-        if self.normalize in (WS_BOTH, WS_TAGS):
+        if bool(self.normalize & WS_TEXT):
             left_value = cleanup_whitespace(left_value or u'').strip()
             right_value = cleanup_whitespace(right_value or u'').strip()
 
@@ -532,18 +565,16 @@ class XMLFormatter(object):
 
 class RMLFormatter(XMLFormatter):
 
-    def __init__(self, pretty_print=True, remove_blank_text=True,
-                 normalize=WS_BOTH,
+    def __init__(self, normalize=WS_BOTH, pretty_print=True,
                  text_tags=('para', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'),
                  formatting_tags=('b', 'u', 'i', 'strike', 'em', 'super',
                                   'sup', 'sub', 'link', 'a', 'span')):
         super(RMLFormatter, self).__init__(
-            pretty_print=pretty_print, remove_blank_text=remove_blank_text,
-            normalize=normalize, text_tags=text_tags,
-            formatting_tags=formatting_tags)
+            normalize=normalize, pretty_print=pretty_print,
+            text_tags=text_tags, formatting_tags=formatting_tags)
 
 
-class DiffFormatter(object):
+class DiffFormatter(BaseFormatter):
 
     # Nothing to prepare or finalize, we could put in normalizing here maybe
     def prepare(self, left, right): return
@@ -553,40 +584,43 @@ class DiffFormatter(object):
     def format(self, diff, orig_tree):
         # This Formatter don't need the left tree, but the XMLFormatter
         # does, so the parameter is required.
-        res = '\n'.join('[%s]' % self.handle_action(action) for action in diff)
-        return res + '\n'
+        res = u'\n'.join(self._format_action(action) for action in diff)
+        return res
+
+    def _format_action(self, action):
+        return u'[%s]' % self.handle_action(action)
 
     def handle_action(self, action):
         action_type = type(action)
         method = getattr(self, '_handle_' + action_type.__name__)
-        return ', '.join(method(action))
+        return u', '.join(method(action))
 
     def _handle_DeleteAttrib(self, action):
-        return "delete-attribute", action.node, action.name
+        return u"delete-attribute", action.node, action.name
 
     def _handle_DeleteNode(self, action):
-        return "delete", action.node
+        return u"delete", action.node
 
     def _handle_InsertAttrib(self, action):
-        return ("insert-attribute", action.target, action.name,
+        return (u"insert-attribute", action.target, action.name,
                 json.dumps(action.value))
 
     def _handle_InsertNode(self, action):
-        return "insert", action.target, action.tag, str(action.position)
+        return u"insert", action.target, action.tag, str(action.position)
 
     def _handle_MoveAttrib(self, action):
-        return ("move-attribute", action.source, action.target,
+        return (u"move-attribute", action.source, action.target,
                 action.oldname, action.newname)
 
     def _handle_MoveNode(self, action):
-        return "move", action.source, action.target, str(action.position)
+        return u"move", action.source, action.target, str(action.position)
 
     def _handle_UpdateAttrib(self, action):
-        return ("update-attribute", action.node, action.name,
+        return (u"update-attribute", action.node, action.name,
                 json.dumps(action.value))
 
     def _handle_UpdateTextIn(self, action):
-        return "update-text", action.node, json.dumps(action.text)
+        return u"update-text", action.node, json.dumps(action.text)
 
     def _handle_UpdateTextAfter(self, action):
-        return "update-text-after", action.node, json.dumps(action.text)
+        return u"update-text-after", action.node, json.dumps(action.text)

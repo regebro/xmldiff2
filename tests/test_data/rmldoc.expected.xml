@@ -295,36 +295,7 @@
           practices as established or modified from time to time.
           
         </para>
-      </app:section>
-
-      <diff:delete>
-
-      
-
-      
-
-      
-
-      </diff:delete><app:section diff:insert="" hidden="false" diff:add-attr="hidden;name;ref;removed;single-ref;title" name="sign" ref="3" removed="false" single-ref="3" title="Signing Bonus"><diff:insert>
-        </diff:insert><app:term diff:insert="" name="sign_bonus" diff:add-attr="name;set" set="ol"/><diff:insert>
-        
-            </diff:insert><para diff:insert=""><diff:insert>
-              </diff:insert><app:ref diff:insert="" name="sign" diff:add-attr="name;{http://namespaces.shoobx.com/preview}body" preview:body="&lt;Ref&gt;"><diff:insert>3</diff:insert></app:ref><diff:insert>. </diff:insert><u diff:insert=""><b diff:insert=""><diff:insert>Signing Bonus</diff:insert></b></u><diff:insert>.
-              You will also be paid a </diff:insert><app:placeholder diff:insert="" field="ol.sign_bonus_include_amt" diff:add-attr="field;missing" missing="Signing Bonus Amount"/><diff:insert> signing
-              bonus, which will be paid on the next regularly scheduled pay date
-              after you start employment with the Company.
-              
-            </diff:insert></para><diff:insert>
-        
-      </diff:insert></app:section><diff:insert>
-
-      
-
-      
-
-      
-
-      </diff:insert><!--added new field/choice/metadata for PTO with 3 options, accrued,
+      </app:section><app:section diff:insert="" hidden="false" diff:add-attr="hidden;name;ref;removed;single-ref;title" name="sign" ref="3" removed="false" single-ref="3" title="Signing Bonus"><app:term diff:insert="" name="sign_bonus" diff:add-attr="name;set" set="ol"/><para diff:insert=""><app:ref diff:insert="" name="sign" diff:add-attr="name;{http://namespaces.shoobx.com/preview}body" preview:body="&lt;Ref&gt;"><diff:insert>3</diff:insert></app:ref><diff:insert>.</diff:insert><u diff:insert=""><b diff:insert=""><diff:insert>Signing Bonus</diff:insert></b></u><diff:insert>. You will also be paid a</diff:insert><app:placeholder diff:insert="" field="ol.sign_bonus_include_amt" diff:add-attr="field;missing" missing="Signing Bonus Amount"/><diff:insert>signing bonus, which will be paid on the next regularly scheduled pay date after you start employment with the Company.</diff:insert></para></app:section><!--added new field/choice/metadata for PTO with 3 options, accrued,
           open-ended or custom-->
 
       <!--NOTE the open-ended option should only be available for exempt
