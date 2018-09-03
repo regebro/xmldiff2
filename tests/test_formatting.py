@@ -4,7 +4,7 @@ import types
 import unittest
 
 from lxml import etree
-from xmldiff2 import diff, formatting, main
+from xmldiff import diff, formatting, main
 
 from .testing import generate_filebased_tests
 

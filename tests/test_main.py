@@ -4,7 +4,7 @@ import sys
 import unittest
 
 from lxml import etree
-from xmldiff2 import main, formatting
+from xmldiff import main, formatting
 
 CURDIR = os.path.split(__file__)[0]
 LEFT_FILE = os.path.join(CURDIR, 'test_data', 'rmldoc.left.xml')

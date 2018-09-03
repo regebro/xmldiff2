@@ -3,8 +3,8 @@ import unittest
 
 from io import open
 from lxml import etree
-from xmldiff2 import utils
-from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
+from xmldiff import utils
+from xmldiff.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
                            DeleteAttrib, UpdateTextAfter)
 

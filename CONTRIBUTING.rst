@@ -1,7 +1,7 @@
-Contributing to xmldiff2
-========================
+Contributing to xmldiff
+=======================
 
-xmldiff2 is a library and a command line utility for making diffs out of
+xmldiff is a library and a command line utility for making diffs out of
 XML and XML derived formats, such as XHTML.
 
 
@@ -24,8 +24,8 @@ Code quality
 Implementation details
 ----------------------
 
-xmldiff2 is based on `"Change Detection in Hierarchically StructuredS Information"`<http://ilpubs.stanford.edu/115/1/1995-46.pdf>
+xmldiff is based on `"Change Detection in Hierarchically StructuredS Information"`<http://ilpubs.stanford.edu/115/1/1995-46.pdf>
 by Sudarshan S. Chawathe, Anand Rajaraman, Hector Garcia-Molina, and
 Jennifer Widom, 1995. It's not necessary to read and understand that
-paper in all it's details to help with xmldiff2, but if you want to
+paper in all it's details to help with xmldiff, but if you want to
 improve the actual diffing algorithm it is certainly helpful.

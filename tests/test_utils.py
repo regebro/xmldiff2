@@ -1,7 +1,7 @@
 import unittest
 
 from lxml import etree
-from xmldiff2 import utils
+from xmldiff import utils
 
 
 class TraverseTests(unittest.TestCase):

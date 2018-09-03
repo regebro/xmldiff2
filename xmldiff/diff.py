@@ -4,7 +4,7 @@ from collections import namedtuple
 from copy import deepcopy
 from difflib import SequenceMatcher
 from lxml import etree
-from xmldiff2 import utils
+from xmldiff import utils
 
 
 # Update, Move, Delete and Insert are the edit script actions:

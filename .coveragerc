@@ -1,4 +1,4 @@
 [run]
-source = xmldiff2
+source = xmldiff
 omit = tests*
-       xmldiff2/*diff_match_patch*.py
+       xmldiff/*diff_match_patch*.py

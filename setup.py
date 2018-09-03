@@ -1,7 +1,7 @@
 from io import open
 from setuptools import setup, find_packages
 
-version = '0.0.9'
+version = '2.0b1'
 
 with open('README.rst', 'rt', encoding='utf8') as readme:
     description = readme.read()
@@ -10,7 +10,7 @@ with open('CHANGES.txt', 'rt', encoding='utf8') as changes:
     history = changes.read()
 
 
-setup(name='xmldiff2',
+setup(name='xmldiff',
       version=version,
       description="Creates diffs of XML files",
       long_description=description + '\n' + history,
@@ -28,7 +28,7 @@ setup(name='xmldiff2',
       keywords='xml html diff',
       author='Lennart Regebro',
       author_email='lregebro@shoobx.com',
-      url='https://github.com/Shoobx/xmldiff2',
+      url='https://github.com/regebro/xmldiff2',
       license='MIT',
       packages=find_packages(exclude=['doc', 'tests']),
       include_package_data=True,
@@ -44,7 +44,7 @@ setup(name='xmldiff2',
       test_suite='tests',
       entry_points={
                'console_scripts': [
-                   'xmldiff2 = xmldiff2.main:run',
+                   'xmldiff = xmldiff.main:run',
                ],
       },
 )

@@ -16,9 +16,9 @@ First Alpha:
 First Beta:
 -----------
 
-* Command line utility
+* Command line utility - Done
 
-* Support for making a pretty text diff
+* Support for making a pretty text diff - Done
 
 First Final:
 ------------
@@ -32,3 +32,8 @@ Future releases:
 * An xmlpatch2 utility/command that can apply the diffs.
 
 * Support for the xmldiff diff format.
+
+* Maybe a diff format that looks like a text diff, but understands XML
+  structure and ignores ignorable whitespace? But that is also doable by
+  just reformatting the XML and pretty printing it and then using a text
+  diff, so maybe that's pointless.

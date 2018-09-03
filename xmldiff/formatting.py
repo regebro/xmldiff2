@@ -5,9 +5,9 @@ import six
 from collections import namedtuple
 from copy import deepcopy
 from lxml import etree
-from xmldiff2.diff_match_patch import diff_match_patch
-from xmldiff2.diff import UpdateTextIn, UpdateTextAfter
-from xmldiff2.utils import cleanup_whitespace
+from xmldiff.diff_match_patch import diff_match_patch
+from xmldiff.diff import UpdateTextIn, UpdateTextAfter
+from xmldiff.utils import cleanup_whitespace
 
 
 DIFF_NS = 'http://namespaces.shoobx.com/diff'

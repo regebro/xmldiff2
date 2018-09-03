@@ -1,7 +1,7 @@
 """All major API points and command line tools"""
 from argparse import ArgumentParser, FileType
 from lxml import etree
-from xmldiff2 import diff, formatting
+from xmldiff import diff, formatting
 
 
 def diff_trees(left_tree, right_tree, F=0.5, uniqueattrs=None, formatter=None):
