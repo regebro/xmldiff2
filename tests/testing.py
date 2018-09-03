@@ -32,6 +32,6 @@ def generate_filebased_tests(data_dir, test_class, suffix='xml', ignore=()):
 
         left_filename = os.path.join(data_dir, left_filename)
         test_function = make_test_function(left_filename)
-        test_name = 'test_' + os.path.split(left_filename)[-1].replace('.', '-')
+        function_name = os.path.split(left_filename)[-1].replace('.', '-')
+        test_name = 'test_' + function_name
         setattr(test_class, test_name, test_function)
-

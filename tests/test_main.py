@@ -10,7 +10,7 @@ RIGHT_FILE = os.path.join(CURDIR, 'test_data', 'rmldoc.right.xml')
 EXPECTED_FILE = os.path.join(CURDIR, 'test_data', 'rmldoc.expected.xml')
 
 
-class TestMainAPI(unittest.TestCase):
+class MainAPITests(unittest.TestCase):
 
     def test_api_diff_files(self):
         # diff_files can take filenames
@@ -36,9 +36,10 @@ class TestMainAPI(unittest.TestCase):
                 result1 = main.diff_texts(left, right)
 
                 # And unicode
-                result2 = main.diff_texts(left.decode('utf8'), right.decode('utf8'))
+                result2 = main.diff_texts(left.decode('utf8'),
+                                          right.decode('utf8'))
 
-                self.assertEqual(result1, result1)
+                self.assertEqual(result1, result2)
 
         with open(LEFT_FILE, 'rb') as l:
             with open(RIGHT_FILE, 'rb') as r:
@@ -54,12 +55,11 @@ class TestMainAPI(unittest.TestCase):
 
         # And Elements
         result2 = main.diff_trees(left.getroot(), right.getroot())
-        self.assertEqual(result1, result1)
+        self.assertEqual(result1, result2)
 
         # Give something else, and it fails:
         with self.assertRaises(TypeError):
             main.diff_trees(LEFT_FILE, RIGHT_FILE)
-
 
     def test_api_diff_files_with_formatter(self):
         formatter = formatting.XMLFormatter()

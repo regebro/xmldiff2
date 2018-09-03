@@ -3,14 +3,13 @@ import unittest
 
 from io import open
 from lxml import etree
-from pprint import pprint
 from xmldiff2 import utils
 from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
                            DeleteAttrib, UpdateTextAfter)
 
 
-class TestAPI(unittest.TestCase):
+class APITests(unittest.TestCase):
     left = u"<document><p>Text</p><p>More</p></document>"
     right = u"<document><p>Tokst</p><p>More</p></document>"
     lefttree = etree.fromstring(left)
@@ -88,7 +87,8 @@ class TestAPI(unittest.TestCase):
         # diffing.
         self.assertIsNot(list(self.differ.diff()), res2)
 
-class TestNodeRatios(unittest.TestCase):
+
+class NodeRatioTests(unittest.TestCase):
 
     def test_compare_equal(self):
         xml = u"""<document>
@@ -116,7 +116,6 @@ class TestNodeRatios(unittest.TestCase):
                 self.assertEqual(differ.child_ratio(left, right), 1.0)
             else:
                 self.assertIsNone(differ.child_ratio(left, right))
-
 
     def test_compare_different_leafs(self):
         left = u"""<document>
@@ -172,7 +171,6 @@ class TestNodeRatios(unittest.TestCase):
         right = righttree.xpath('/document/story/section[1]/para')[0]
         self.assertAlmostEqual(differ.leaf_ratio(left, right),
                                0.24)
-
 
     def test_compare_different_nodes(self):
         left = u"""<document>
@@ -233,7 +231,6 @@ class TestNodeRatios(unittest.TestCase):
         right = differ.right.xpath('/document/story/section[3]')[0]
         self.assertEqual(differ.leaf_ratio(left, right), 1.0)
         self.assertEqual(differ.child_ratio(left, right), 1.0)
-
 
     def test_compare_with_xmlid(self):
         left = u"""<document>
@@ -298,7 +295,7 @@ class TestNodeRatios(unittest.TestCase):
         self.assertEqual(differ.child_ratio(left, right), 1.0)
 
 
-class TestMatch(unittest.TestCase):
+class MatchTests(unittest.TestCase):
 
     def _match(self, left, right):
         left_tree = etree.fromstring(left)
@@ -609,7 +606,7 @@ class TestMatch(unittest.TestCase):
         ])
 
 
-class TestUpdateNode(unittest.TestCase):
+class UpdateNodeTests(unittest.TestCase):
     """Testing only the update phase of the diffing"""
 
     def _match(self, left, right):
@@ -638,7 +635,6 @@ class TestUpdateNode(unittest.TestCase):
 </document>
 """
         result = self._match(xml, xml)
-        nodes = list(utils.post_order_traverse(etree.fromstring(xml)))
         # Everything matches
         self.assertEqual(result, [])
 
@@ -664,7 +660,7 @@ class TestUpdateNode(unittest.TestCase):
         )
 
 
-class TestAlignChildren(unittest.TestCase):
+class AlignChildrenTests(unittest.TestCase):
     """Testing only the align phase of the diffing"""
 
     def _align(self, left, right):
@@ -752,7 +748,7 @@ class TestAlignChildren(unittest.TestCase):
                                    '/document/story/section[1]', 2)])
 
 
-class TestDiff(unittest.TestCase):
+class DiffTests(unittest.TestCase):
     """Testing only the align phase of the diffing"""
 
     def _diff(self, left, right):
@@ -795,17 +791,18 @@ class TestDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [InsertNode('/document/story[1]', 'section', 1),
-             InsertAttrib('/document/story/section[2]', 'ref', '4'),
-             InsertAttrib('/document/story/section[2]', 'single-ref', '4'),
-             MoveNode('/document/story/section[1]/para[3]',
-                      '/document/story/section[2]', 0),
-             InsertNode('/document/story/section[2]', 'para', 0),
-             UpdateTextIn('/document/story/section[2]/para[1]',
-                        'Fourth paragraph'),
-             DeleteNode('/document/story/deleteme/para[1]'),
-             DeleteNode('/document/story/deleteme[1]'),
-             ]
+            [
+                InsertNode('/document/story[1]', 'section', 1),
+                InsertAttrib('/document/story/section[2]', 'ref', '4'),
+                InsertAttrib('/document/story/section[2]', 'single-ref', '4'),
+                MoveNode('/document/story/section[1]/para[3]',
+                         '/document/story/section[2]', 0),
+                InsertNode('/document/story/section[2]', 'para', 0),
+                UpdateTextIn('/document/story/section[2]/para[1]',
+                             'Fourth paragraph'),
+                DeleteNode('/document/story/deleteme/para[1]'),
+                DeleteNode('/document/story/deleteme[1]'),
+            ]
         )
 
     def test_needs_align(self):
@@ -814,20 +811,23 @@ class TestDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [MoveNode('/root/n[1]', '/root[1]', 1),
-             MoveNode('/root/n[2]/p[2]', '/root/n[1]', 0),
+            [
+                MoveNode('/root/n[1]', '/root[1]', 1),
+                MoveNode('/root/n[2]/p[2]', '/root/n[1]', 0),
             ]
         )
 
     def test_no_root_match(self):
-        left = '<root attr="val"><n><p>1</p><p>2</p><p>3</p></n><n><p>4</p></n></root>'
+        left = '<root attr="val"><n><p>1</p><p>2</p><p>3</p></n>'\
+            '<n><p>4</p></n></root>'
         right = '<root><n><p>2</p><p>4</p></n><n><p>1</p><p>3</p></n></root>'
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [DeleteAttrib(node='/root[1]', name='attr'),
-             MoveNode('/root/n[1]', '/root[1]', 1),
-             MoveNode('/root/n[2]/p[2]', '/root/n[1]', 0),
+            [
+                DeleteAttrib(node='/root[1]', name='attr'),
+                MoveNode('/root/n[1]', '/root[1]', 1),
+                MoveNode('/root/n[2]/p[2]', '/root/n[1]', 0),
             ]
         )
 
@@ -843,112 +843,130 @@ class TestDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [InsertNode(
-              '/document/story[1]',
-              '{http://namespaces.shoobx.com/application}section',
-              4),
-             InsertAttrib('/document/story/app:section[4]', 'hidden', 'false'),
-             InsertAttrib('/document/story/app:section[4]', 'name', 'sign'),
-             InsertAttrib('/document/story/app:section[4]', 'ref', '3'),
-             InsertAttrib('/document/story/app:section[4]', 'removed', 'false'),
-             InsertAttrib('/document/story/app:section[4]', 'single-ref', '3'),
-             InsertAttrib(
-              '/document/story/app:section[4]', 'title',
-              'Signing Bonus'),
-             UpdateAttrib('/document/story/app:section[5]', 'ref', '4'),
-             UpdateAttrib('/document/story/app:section[5]', 'single-ref', '4'),
-             UpdateAttrib('/document/story/app:section[6]', 'ref', '5'),
-             UpdateAttrib('/document/story/app:section[6]', 'single-ref', '5'),
-             UpdateAttrib('/document/story/app:section[7]', 'ref', '6'),
-             UpdateAttrib('/document/story/app:section[7]', 'single-ref', '6'),
-             UpdateAttrib('/document/story/app:section[8]', 'ref', '7'),
-             UpdateAttrib('/document/story/app:section[8]', 'single-ref', '7'),
-             UpdateAttrib('/document/story/app:section[9]', 'ref', '8'),
-             UpdateAttrib('/document/story/app:section[9]', 'single-ref', '8'),
-             UpdateAttrib('/document/story/app:section[10]', 'ref', '9'),
-             UpdateAttrib('/document/story/app:section[10]', 'single-ref', '9'),
-             UpdateAttrib('/document/story/app:section[11]', 'ref', '10'),
-             UpdateAttrib('/document/story/app:section[11]', 'single-ref', '10'),
-             UpdateAttrib('/document/story/app:section[12]', 'ref', '11'),
-             UpdateAttrib('/document/story/app:section[12]', 'single-ref', '11'),
-             UpdateAttrib('/document/story/app:section[14]', 'ref', '12'),
-             UpdateAttrib('/document/story/app:section[14]', 'single-ref', '12'),
-             UpdateTextIn(
-                 '/document/story/app:section[1]/para[2]/app:placeholder[1]',
-                 'Second Name'),
-             InsertNode(
-              '/document/story/app:section[4]',
-              '{http://namespaces.shoobx.com/application}term',
-              0),
-             InsertAttrib(
-              '/document/story/app:section[4]/app:term[1]', 'name',
-              'sign_bonus'),
-             InsertAttrib('/document/story/app:section[4]/app:term[1]', 'set', 'ol'),
-             InsertNode('/document/story/app:section[4]', 'para', 1),
-             InsertNode(
-              '/document/story/app:section[4]/para[1]',
-              '{http://namespaces.shoobx.com/application}ref',
-              0),
-             InsertAttrib(
-              '/document/story/app:section[4]/para/app:ref[1]', 'name',
-              'sign'),
-             InsertAttrib(
-                 '/document/story/app:section[4]/para/app:ref[1]',
-                 '{http://namespaces.shoobx.com/preview}body',
-                 '<Ref>'),
-             UpdateTextIn(
-                 '/document/story/app:section[4]/para/app:ref[1]', '3'),
-             UpdateTextAfter(
-                 '/document/story/app:section[4]/para/app:ref[1]', '. '),
-             InsertNode('/document/story/app:section[4]/para[1]', 'u', 1),
-             UpdateTextAfter(
-                 '/document/story/app:section[4]/para/u[1]',
-                 '.\n              You will also be paid a '),
-             InsertNode(
-              '/document/story/app:section[4]/para[1]',
-              '{http://namespaces.shoobx.com/application}placeholder',
-              2),
-             InsertAttrib(
-              '/document/story/app:section[4]/para/app:placeholder[1]', 'field',
-              'ol.sign_bonus_include_amt'),
-             InsertAttrib(
-              '/document/story/app:section[4]/para/app:placeholder[1]', 'missing',
-              'Signing Bonus Amount'),
-             UpdateTextAfter(
+            [
+                InsertNode(
+                    '/document/story[1]',
+                    '{http://namespaces.shoobx.com/application}section',
+                    4),
+                InsertAttrib(
+                    '/document/story/app:section[4]', 'hidden', 'false'),
+                InsertAttrib(
+                    '/document/story/app:section[4]', 'name', 'sign'),
+                InsertAttrib(
+                    '/document/story/app:section[4]', 'ref', '3'),
+                InsertAttrib(
+                    '/document/story/app:section[4]', 'removed', 'false'),
+                InsertAttrib(
+                    '/document/story/app:section[4]', 'single-ref', '3'),
+                InsertAttrib(
+                 '/document/story/app:section[4]', 'title', 'Signing Bonus'),
+                UpdateAttrib('/document/story/app:section[5]', 'ref', '4'),
+                UpdateAttrib(
+                    '/document/story/app:section[5]', 'single-ref', '4'),
+                UpdateAttrib('/document/story/app:section[6]', 'ref', '5'),
+                UpdateAttrib(
+                    '/document/story/app:section[6]', 'single-ref', '5'),
+                UpdateAttrib('/document/story/app:section[7]', 'ref', '6'),
+                UpdateAttrib(
+                    '/document/story/app:section[7]', 'single-ref', '6'),
+                UpdateAttrib('/document/story/app:section[8]', 'ref', '7'),
+                UpdateAttrib(
+                    '/document/story/app:section[8]', 'single-ref', '7'),
+                UpdateAttrib('/document/story/app:section[9]', 'ref', '8'),
+                UpdateAttrib(
+                    '/document/story/app:section[9]', 'single-ref', '8'),
+                UpdateAttrib('/document/story/app:section[10]', 'ref', '9'),
+                UpdateAttrib(
+                    '/document/story/app:section[10]', 'single-ref', '9'),
+                UpdateAttrib('/document/story/app:section[11]', 'ref', '10'),
+                UpdateAttrib(
+                    '/document/story/app:section[11]', 'single-ref', '10'),
+                UpdateAttrib('/document/story/app:section[12]', 'ref', '11'),
+                UpdateAttrib(
+                    '/document/story/app:section[12]', 'single-ref', '11'),
+                UpdateAttrib('/document/story/app:section[14]', 'ref', '12'),
+                UpdateAttrib(
+                    '/document/story/app:section[14]', 'single-ref', '12'),
+                UpdateTextIn(
+                    '/document/story/app:section[1]/para[2]/'
+                    'app:placeholder[1]',
+                    'Second Name'),
+                InsertNode(
+                 '/document/story/app:section[4]',
+                 '{http://namespaces.shoobx.com/application}term',
+                 0),
+                InsertAttrib(
+                 '/document/story/app:section[4]/app:term[1]', 'name',
+                 'sign_bonus'),
+                InsertAttrib(
+                    '/document/story/app:section[4]/app:term[1]', 'set', 'ol'),
+                InsertNode('/document/story/app:section[4]', 'para', 1),
+                InsertNode(
+                 '/document/story/app:section[4]/para[1]',
+                 '{http://namespaces.shoobx.com/application}ref',
+                 0),
+                InsertAttrib(
+                 '/document/story/app:section[4]/para/app:ref[1]', 'name',
+                 'sign'),
+                InsertAttrib(
+                    '/document/story/app:section[4]/para/app:ref[1]',
+                    '{http://namespaces.shoobx.com/preview}body',
+                    '<Ref>'),
+                UpdateTextIn(
+                    '/document/story/app:section[4]/para/app:ref[1]', '3'),
+                UpdateTextAfter(
+                    '/document/story/app:section[4]/para/app:ref[1]', '. '),
+                InsertNode('/document/story/app:section[4]/para[1]', 'u', 1),
+                UpdateTextAfter(
+                    '/document/story/app:section[4]/para/u[1]',
+                    '.\n              You will also be paid a '),
+                InsertNode(
+                 '/document/story/app:section[4]/para[1]',
+                 '{http://namespaces.shoobx.com/application}placeholder',
+                 2),
+                InsertAttrib(
                  '/document/story/app:section[4]/para/app:placeholder[1]',
-                 (' signing\n              bonus, which will be paid on the ' +
-                  'next regularly scheduled pay date\n              after ' +
-                  'you start employment with the Company.\n              \n' +
-                  '            ')
-                 ),
-             InsertNode('/document/story/app:section[4]/para/u[1]', 'b', 0),
-             UpdateTextIn(
-                 '/document/story/app:section[4]/para/u/b[1]',
-                 'Signing Bonus'),
-             UpdateTextIn(
-              '/document/story/app:section[5]/para/app:ref[1]',
-              '4'),
-             UpdateTextIn(
-              '/document/story/app:section[6]/para/app:ref[1]',
-              '5'),
-             UpdateTextIn(
-              '/document/story/app:section[7]/para/app:ref[1]',
-              '6'),
-             UpdateTextIn(
-              '/document/story/app:section[8]/para/app:ref[1]',
-              '7'),
-             UpdateTextIn(
-              '/document/story/app:section[9]/para/app:ref[1]',
-              '8'),
-             UpdateTextIn(
-              '/document/story/app:section[10]/para/app:ref[1]',
-              '9'),
-             UpdateTextIn(
-              '/document/story/app:section[11]/para/app:ref[1]',
-              '10'),
-             UpdateTextIn(
-              '/document/story/app:section[12]/para/app:ref[1]',
-              '11')
+                 'field',
+                 'ol.sign_bonus_include_amt'),
+                InsertAttrib(
+                 '/document/story/app:section[4]/para/app:placeholder[1]',
+                 'missing',
+                 'Signing Bonus Amount'),
+                UpdateTextAfter(
+                    '/document/story/app:section[4]/para/app:placeholder[1]',
+                    ' signing\n              bonus, which will be paid on the '
+                    'next regularly scheduled pay date\n              after '
+                    'you start employment with the Company.\n              \n'
+                    '            '
+                ),
+                InsertNode('/document/story/app:section[4]/para/u[1]', 'b', 0),
+                UpdateTextIn(
+                    '/document/story/app:section[4]/para/u/b[1]',
+                    'Signing Bonus'),
+                UpdateTextIn(
+                 '/document/story/app:section[5]/para/app:ref[1]',
+                 '4'),
+                UpdateTextIn(
+                 '/document/story/app:section[6]/para/app:ref[1]',
+                 '5'),
+                UpdateTextIn(
+                 '/document/story/app:section[7]/para/app:ref[1]',
+                 '6'),
+                UpdateTextIn(
+                 '/document/story/app:section[8]/para/app:ref[1]',
+                 '7'),
+                UpdateTextIn(
+                 '/document/story/app:section[9]/para/app:ref[1]',
+                 '8'),
+                UpdateTextIn(
+                 '/document/story/app:section[10]/para/app:ref[1]',
+                 '9'),
+                UpdateTextIn(
+                 '/document/story/app:section[11]/para/app:ref[1]',
+                 '10'),
+                UpdateTextIn(
+                 '/document/story/app:section[12]/para/app:ref[1]',
+                 '11')
             ]
         )
 
@@ -1002,16 +1020,20 @@ class TestDiff(unittest.TestCase):
         result = self._diff(left, right)
         self.assertEqual(
             result,
-            [InsertNode('/document/story/app:section[1]', '{someuri}para', 0),
-             UpdateTextIn(
-                 '/document/story/app:section/app:para[1]',
-                 'Lorem ipsum dolor sit amet,\n                consectetur '
-                 'adipiscing elit. Pellentesque feugiat metus quam.\n'
-                 '                Suspendisse potenti. Vestibulum quis '
-                 'ornare felis,\n                ac elementum sem.'),
-             InsertAttrib('/document/story/app:section/app:para[3]',
-                          '{someuri}attrib', 'value'),
-             DeleteNode('/document/story/app:section/foo:para[1]'),
+            [
+                InsertNode(
+                    '/document/story/app:section[1]',
+                    '{someuri}para',
+                    0),
+                UpdateTextIn(
+                    '/document/story/app:section/app:para[1]',
+                    'Lorem ipsum dolor sit amet,\n                consectetur '
+                    'adipiscing elit. Pellentesque feugiat metus quam.\n'
+                    '                Suspendisse potenti. Vestibulum quis '
+                    'ornare felis,\n                ac elementum sem.'),
+                InsertAttrib('/document/story/app:section/app:para[3]',
+                             '{someuri}attrib', 'value'),
+                DeleteNode('/document/story/app:section/foo:para[1]'),
             ]
         )
 

@@ -4,7 +4,7 @@ from lxml import etree
 from xmldiff2 import utils
 
 
-class TestTraverse(unittest.TestCase):
+class TraverseTests(unittest.TestCase):
 
     def test_post_order(self):
         xml = u'''<document>
@@ -42,7 +42,8 @@ class TestTraverse(unittest.TestCase):
 '''
         root = etree.fromstring(xml)
         tree = root.getroottree()
-        res = [tree.getpath(x) for x in utils.reverse_post_order_traverse(root)]
+        res = [tree.getpath(x) for x in
+               utils.reverse_post_order_traverse(root)]
         self.assertEqual(res, ['/document/story/section[2]/para',
                                '/document/story/section[2]',
                                '/document/story/section[1]/para',
@@ -74,7 +75,7 @@ class TestTraverse(unittest.TestCase):
                                ])
 
 
-class TestLongestCommonSubsequence(unittest.TestCase):
+class LongestCommonSubsequenceTests(unittest.TestCase):
 
     def _diff(self, left, right, result):
         res = []

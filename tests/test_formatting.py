@@ -1,19 +1,17 @@
 # -*- coding: UTF-8 -*-
 import os
-import re
 import unittest
 
-from io import open
 from lxml import etree
 from xmldiff2 import diff, formatting, main
 
-from .utils import make_test_function, generate_filebased_tests
+from .testing import generate_filebased_tests
 
 START = u'<document xmlns:diff="http://namespaces.shoobx.com/diff"><node'
 END = u'</node></document>'
 
 
-class TestPlaceholderMaker(unittest.TestCase):
+class PlaceholderMakerTests(unittest.TestCase):
 
     def test_get_placeholder(self):
         replacer = formatting.PlaceholderMaker()
@@ -73,7 +71,8 @@ class TestPlaceholderMaker(unittest.TestCase):
 
         self.assertEqual(
             element.text,
-            u'This \U000f0005 a \U000f0006 with \U000f0008formatted\U000f0007 text.')
+            u'This \U000f0005 a \U000f0006 with \U000f0008formatted'
+            u'\U000f0007 text.')
 
         replacer.undo_element(element)
         result = etree.tounicode(element)
@@ -89,7 +88,8 @@ class TestPlaceholderMaker(unittest.TestCase):
 
         self.assertEqual(
             element.text,
-            u'This is \U000f0006doubly \U000f0008formatted\U000f0007\U000f0005 text.')
+            u'This is \U000f0006doubly \U000f0008formatted\U000f0007'
+            u'\U000f0005 text.')
 
         replacer.undo_element(element)
         result = etree.tounicode(element)
@@ -122,8 +122,10 @@ class TestPlaceholderMaker(unittest.TestCase):
 
         # The diff formatting will find some text to insert.
         delete_attrib = u'{%s}delete-format' % formatting.DIFF_NS
-        replacer.placeholder2tag[u'\U000f0006'].element.attrib[delete_attrib] = ''
-        replacer.placeholder2tag[u'\U000f0007'].element.attrib[delete_attrib] = ''
+        replacer.placeholder2tag[u'\U000f0006'
+                                 ].element.attrib[delete_attrib] = ''
+        replacer.placeholder2tag[u'\U000f0007'
+                                 ].element.attrib[delete_attrib] = ''
         tree = etree.fromstring(after_diff)
         replacer.undo_tree(tree)
         result = etree.tounicode(tree)
@@ -139,7 +141,7 @@ class TestPlaceholderMaker(unittest.TestCase):
         self.assertEqual(result, expected)
 
 
-class TestXMLFormat(unittest.TestCase):
+class XMLFormatTests(unittest.TestCase):
 
     def _format_test(self, left, action, expected):
         formatter = formatting.XMLFormatter(pretty_print=False)
@@ -182,8 +184,8 @@ class TestXMLFormat(unittest.TestCase):
     def test_insert_attr(self):
         left = u'<document><node>We need more text</node></document>'
         action = diff.InsertAttrib('/document/node', 'attr', 'val')
-        expected = START + u' attr="val" diff:add-attr="attr">' \
-                   'We need more text' + END
+        expected = START + u' attr="val" diff:add-attr="attr">'\
+            u'We need more text' + END
 
         self._format_test(left, action, expected)
 
@@ -198,9 +200,10 @@ class TestXMLFormat(unittest.TestCase):
         # The library currently only uses move attr for when attributes are
         # renamed:
         left = u'<document><node attr="val">Text</node></document>'
-        action = diff.MoveAttrib('/document/node', '/document/node', 'attr', 'bottr')
-        expected = START + u' bottr="val" diff:rename-attr="attr:bottr"' \
-                  '>Text' + END
+        action = diff.MoveAttrib('/document/node', '/document/node',
+                                 'attr', 'bottr')
+        expected = START + u' bottr="val" diff:rename-attr="attr:bottr"'\
+            u'>Text' + END
 
         self._format_test(left, action, expected)
 
@@ -208,9 +211,9 @@ class TestXMLFormat(unittest.TestCase):
         # So we test that as well:
         left = u'<document><node attr="val"><b>Text</b></node></document>'
         action = diff.MoveAttrib('/document/node', '/document/node/b',
-                            'attr', 'attr')
-        expected = START + u' diff:delete-attr="attr"><b attr="val" ' \
-                   'diff:add-attr="attr">Text</b>' + END
+                                 'attr', 'attr')
+        expected = START + u' diff:delete-attr="attr"><b attr="val" '\
+            u'diff:add-attr="attr">Text</b>' + END
 
         self._format_test(left, action, expected)
 
@@ -218,16 +221,16 @@ class TestXMLFormat(unittest.TestCase):
         # Move 1 down
         left = u'<document><node id="1" /><node id="2" /></document>'
         action = diff.MoveNode('/document/node[1]', '/document', 1)
-        expected = START + u' id="1" diff:delete=""/><node id="2"/><node ' \
-            'id="1" diff:insert=""/></document>'
+        expected = START + u' id="1" diff:delete=""/><node id="2"/><node '\
+            u'id="1" diff:insert=""/></document>'
 
         self._format_test(left, action, expected)
 
         # Move 2 up (same result, different diff)
         left = u'<document><node id="1" /><node id="2" /></document>'
         action = diff.MoveNode('/document/node[2]', '/document', 0)
-        expected = START + u' id="2" diff:insert=""/><node id="1"/><node ' \
-            'id="2" diff:delete=""/></document>'
+        expected = START + u' id="2" diff:insert=""/><node id="1"/><node '\
+            u'id="2" diff:delete=""/></document>'
 
         self._format_test(left, action, expected)
 
@@ -235,7 +238,7 @@ class TestXMLFormat(unittest.TestCase):
         left = u'<document><node attr="val"/></document>'
         action = diff.UpdateAttrib('/document/node', 'attr', 'newval')
         expected = START + u' attr="newval" diff:update-attr="attr:val"/>'\
-                   '</document>'
+            u'</document>'
 
         self._format_test(left, action, expected)
 
@@ -246,32 +249,35 @@ class TestXMLFormat(unittest.TestCase):
 
         self._format_test(left, action, expected)
 
-        left = u'<document><node>This is a bit of text, right</node></document>'
-        action = diff.UpdateTextIn('/document/node', 'Also a bit of text, rick')
-        expected = START + u'><diff:delete>This is</diff:delete><diff:insert>' \
-            'Also</diff:insert> a bit of text, ri<diff:delete>ght' \
-            '</diff:delete><diff:insert>ck</diff:insert>' + END
+        left = u'<document><node>This is a bit of text, right' + END
+        action = diff.UpdateTextIn('/document/node',
+                                   'Also a bit of text, rick')
+        expected = START + u'><diff:delete>This is</diff:delete><diff:insert>'\
+            u'Also</diff:insert> a bit of text, ri<diff:delete>ght'\
+            u'</diff:delete><diff:insert>ck</diff:insert>' + END
 
         self._format_test(left, action, expected)
 
     def test_update_text_after_1(self):
         left = u'<document><node/><node/></document>'
         action = diff.UpdateTextAfter('/document/node[1]', 'Text')
-        expected = START + u'/><diff:insert>Text</diff:insert><node/></document>'
+        expected = START + u'/><diff:insert>Text</diff:insert>'\
+            u'<node/></document>'
 
         self._format_test(left, action, expected)
 
     def test_update_text_after_2(self):
         left = u'<document><node/>This is a bit of text, right</document>'
-        action = diff.UpdateTextAfter('/document/node', 'Also a bit of text, rick')
-        expected = START + u'/><diff:delete>This is</diff:delete><diff:insert>' \
-            'Also</diff:insert> a bit of text, ri<diff:delete>ght' \
-            '</diff:delete><diff:insert>ck</diff:insert></document>'
+        action = diff.UpdateTextAfter('/document/node',
+                                      'Also a bit of text, rick')
+        expected = START + u'/><diff:delete>This is</diff:delete>'\
+            u'<diff:insert>Also</diff:insert> a bit of text, ri<diff:delete>'\
+            u'ght</diff:delete><diff:insert>ck</diff:insert></document>'
 
         self._format_test(left, action, expected)
 
 
-class TestDiffFormat(unittest.TestCase):
+class DiffFormatTests(unittest.TestCase):
 
     def _format_test(self, action, expected):
         formatter = formatting.DiffFormatter()
@@ -280,7 +286,7 @@ class TestDiffFormat(unittest.TestCase):
 
     def test_del_attr(self):
         action = diff.DeleteAttrib('/document/node', 'a')
-        expected ='[delete-attribute, /document/node, a]\n'
+        expected = '[delete-attribute, /document/node, a]\n'
         self._format_test(action, expected)
 
     def test_del_node(self):
@@ -306,15 +312,18 @@ class TestDiffFormat(unittest.TestCase):
     def test_move_attr(self):
         # The library currently only uses move attr for when attributes are
         # renamed:
-        action = diff.MoveAttrib('/document/node', '/document/node', 'attr', 'bottr')
-        expected = '[move-attribute, /document/node, /document/node, attr, bottr]\n'
+        action = diff.MoveAttrib('/document/node', '/document/node',
+                                 'attr', 'bottr')
+        expected = '[move-attribute, /document/node, /document/node, '\
+            u'attr, bottr]\n'
         self._format_test(action, expected)
 
         # But it could conceivably be used to move attributes between nodes.
         # So we test that as well:
         action = diff.MoveAttrib('/document/node', '/document/node/b',
-                            'attr', 'attr')
-        expected = '[move-attribute, /document/node, /document/node/b, attr, attr]\n'
+                                 'attr', 'attr')
+        expected = '[move-attribute, /document/node, /document/node/b, '\
+            u'attr, attr]\n'
         self._format_test(action, expected)
 
     def test_move_node(self):
@@ -339,8 +348,10 @@ class TestDiffFormat(unittest.TestCase):
         expected = '[update-text, /document/node, "Text"]\n'
         self._format_test(action, expected)
 
-        action = diff.UpdateTextIn('/document/node', 'Also a bit of text, "rick"')
-        expected = '[update-text, /document/node, "Also a bit of text, \\"rick\\""]\n'
+        action = diff.UpdateTextIn('/document/node',
+                                   'Also a bit of text, "rick"')
+        expected = '[update-text, /document/node, '\
+            u'"Also a bit of text, \\"rick\\""]\n'
         self._format_test(action, expected)
 
     def test_update_text_after_1(self):
@@ -349,12 +360,14 @@ class TestDiffFormat(unittest.TestCase):
         self._format_test(action, expected)
 
     def test_update_text_after_2(self):
-        action = diff.UpdateTextAfter('/document/node', 'Also a bit of text, rick')
-        expected = '[update-text-after, /document/node, "Also a bit of text, rick"]\n'
+        action = diff.UpdateTextAfter('/document/node',
+                                      'Also a bit of text, rick')
+        expected = '[update-text-after, /document/node, '\
+            u'"Also a bit of text, rick"]\n'
         self._format_test(action, expected)
 
 
-class FormatFileTest(unittest.TestCase):
+class FormatterFileTests(unittest.TestCase):
 
     formatter = None  # Override this
     maxDiff = None
@@ -363,14 +376,14 @@ class FormatFileTest(unittest.TestCase):
         return main.diff_files(left, right, formatter=self.formatter)
 
 
-class XMLFormatFileTest(FormatFileTest):
+class XMLFormatterFileTests(FormatterFileTests):
 
     # The XMLFormatter has no text or formatting tags, so
     formatter = formatting.XMLFormatter(pretty_print=False,
                                         normalize=formatting.WS_TEXT)
 
 
-class RMLFormatFileTest(FormatFileTest):
+class RMLFormatterFileTests(FormatterFileTests):
 
     # We use the RMLFormatter for the placeholder tests
     formatter = formatting.RMLFormatter()
@@ -378,8 +391,8 @@ class RMLFormatFileTest(FormatFileTest):
 
 # Add tests that use no placeholder replacement (ie plain XML)
 data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
-generate_filebased_tests(data_dir, XMLFormatFileTest)
+generate_filebased_tests(data_dir, XMLFormatterFileTests)
 
 # Add tests that use placeholder replacement (ie RML)
 data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
-generate_filebased_tests(data_dir, RMLFormatFileTest, suffix='rml')
+generate_filebased_tests(data_dir, RMLFormatterFileTests, suffix='rml')
