@@ -21,6 +21,16 @@ we concentrate on making it correct and usable.
 xmldiff aims to have 100% test coverage.
 Python 2.7 support will be dropped soon.
 
+The diff algorithm is based on `"Change Detection in Hierarchically Structured Information"
+<http://ilpubs.stanford.edu/115/1/1995-46.pdf>`_
+and the text diff is using Googles diff_match_patch algorithm.
+
+Contributors
+------------
+
+ * Lennart Regebro, lregebro@shoobx.com (main author)
+
+ * Stephan Richter, srichter@shoobx.com
 
 Quick usage
 -----------
@@ -42,3 +52,4 @@ As a library::
 
 There is also a method ``diff_trees()`` that take two lxml trees, and
 a method ``diff_texts()`` that will take strings containing XML.
+

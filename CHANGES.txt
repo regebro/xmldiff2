@@ -1,7 +1,16 @@
 Changes
 =======
 
-0.0.1 (unreleased)
+2.0b1 (unreleased)
 ------------------
 
-- First release
+- A complete, bottom-up, pure-python rewrite
+
+- New output formats:
+
+  - A list of actions (similar but not compatible with the old format)
+
+  - XML with changes marked though tags and attributes
+
+  - RML aware XML where tags containing text are semantically diffed, useful
+    for human output such as converting to HTML or PDF
