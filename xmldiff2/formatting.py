@@ -28,7 +28,7 @@ T_SINGLE = 2
 PlaceholderEntry = namedtuple('PlaceholderEntry', 'element ttype close_ph')
 
 
-class PlaceholdererMaker(object):
+class PlaceholderMaker(object):
     """Replace tags with unicode placeholders
 
     This class searches for certain tags in an XML tree and replaces them
@@ -253,7 +253,7 @@ class XMLFormatter(object):
         self.remove_blank_text = pretty_print
         self.text_tags = text_tags
         self.formatting_tags = formatting_tags
-        self.placeholderer = PlaceholdererMaker(
+        self.placeholderer = PlaceholderMaker(
             text_tags=text_tags, formatting_tags=formatting_tags)
 
     def prepare(self, left_tree, right_tree):

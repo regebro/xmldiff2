@@ -29,11 +29,11 @@ From the commandline::
 As a library::
 
   from lxml import etree
-  from xmldiff2 import main
+  from xmldiff2 import main, formatting
 
   differ = diff.Differ()
   diff = main.diff_files('file1.xml', 'file2.xml',
-                         formatter=format.XMLFormatter())
+                         formatter=formatting.XMLFormatter())
 
   print(diff)
 

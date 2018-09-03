@@ -4,7 +4,7 @@ import unittest
 from io import open
 from lxml import etree
 from pprint import pprint
-from xmldiff2.utils import post_order_traverse, breadth_first_traverse
+from xmldiff2 import utils
 from xmldiff2.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
                            DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
                            DeleteAttrib, UpdateTextAfter)
@@ -109,8 +109,8 @@ class TestNodeRatios(unittest.TestCase):
 
         # Every node in these trees should get a 1.0 leaf_ratio,
         # and if it has children, 1.0 child_ration, else None
-        for left, right in zip(post_order_traverse(differ.left),
-                               post_order_traverse(differ.right)):
+        for left, right in zip(utils.post_order_traverse(differ.left),
+                               utils.post_order_traverse(differ.right)):
             self.assertEqual(differ.leaf_ratio(left, right), 1.0)
             if left.getchildren():
                 self.assertEqual(differ.child_ratio(left, right), 1.0)
@@ -323,7 +323,7 @@ class TestMatch(unittest.TestCase):
 </document>
 """
         result = self._match(xml, xml)
-        nodes = list(post_order_traverse(etree.fromstring(xml)))
+        nodes = list(utils.post_order_traverse(etree.fromstring(xml)))
         # Everything matches
         self.assertEqual(len(result), len(nodes))
 
@@ -638,7 +638,7 @@ class TestUpdateNode(unittest.TestCase):
 </document>
 """
         result = self._match(xml, xml)
-        nodes = list(post_order_traverse(etree.fromstring(xml)))
+        nodes = list(utils.post_order_traverse(etree.fromstring(xml)))
         # Everything matches
         self.assertEqual(result, [])
 

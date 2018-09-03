@@ -2,7 +2,7 @@ import os
 import unittest
 
 from lxml import etree
-from xmldiff2 import main, format
+from xmldiff2 import main, formatting
 
 CURDIR = os.path.split(__file__)[0]
 LEFT_FILE = os.path.join(CURDIR, 'test_data', 'rmldoc.left.xml')
@@ -62,7 +62,7 @@ class TestMainAPI(unittest.TestCase):
 
 
     def test_api_diff_files_with_formatter(self):
-        formatter = format.XMLFormatter()
+        formatter = formatting.XMLFormatter()
         # diff_files can take filenames
         result = main.diff_files(LEFT_FILE, RIGHT_FILE, formatter=formatter)
         # This formatter will insert a diff namespace:
