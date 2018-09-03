@@ -1,18 +1,17 @@
 language: python
 
-python:
-  - 2.7
-  - 3.5
-  - 3.6
-  - 3.7
-  - pypy
-  - pypy3
-
-# Travis doesn't support 3.7 by default. Keep it in but allow it to fail,
-# and we can add support once it works.
+# Travis doesn't support 3.7 by default, but if we run it on xenial it works
 matrix:
-  allow_failures:
-    - python: 3.7
+  fast_finish: true
+  include:
+  - python: 2.7
+  - python: 3.5
+  - python: 3.6
+  - python: 3.7
+    sudo: required
+    dist: xenial
+  - python: pypy
+  - python: pypy3
 
 install:
   - pip install . coverage coveralls flake8
