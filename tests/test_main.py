@@ -19,9 +19,9 @@ class MainAPITests(unittest.TestCase):
         result1 = main.diff_files(LEFT_FILE, RIGHT_FILE)
 
         # Or open file streams:
-        with open(LEFT_FILE, 'rb') as l:
-            with open(RIGHT_FILE, 'rb') as r:
-                result2 = main.diff_files(l, r)
+        with open(LEFT_FILE, 'rb') as linfile:
+            with open(RIGHT_FILE, 'rb') as rinfile:
+                result2 = main.diff_files(linfile, rinfile)
 
         self.assertEqual(result1, result2)
 
@@ -31,10 +31,10 @@ class MainAPITests(unittest.TestCase):
 
     def test_api_diff_texts(self):
         # diff_text can take bytes
-        with open(LEFT_FILE, 'rb') as l:
-            with open(RIGHT_FILE, 'rb') as r:
-                left = l.read()
-                right = r.read()
+        with open(LEFT_FILE, 'rb') as linfile:
+            with open(RIGHT_FILE, 'rb') as rinfile:
+                left = linfile.read()
+                right = rinfile.read()
                 result1 = main.diff_texts(left, right)
 
                 # And unicode
@@ -43,11 +43,11 @@ class MainAPITests(unittest.TestCase):
 
                 self.assertEqual(result1, result2)
 
-        with open(LEFT_FILE, 'rb') as l:
-            with open(RIGHT_FILE, 'rb') as r:
+        with open(LEFT_FILE, 'rb') as infile:
+            with open(RIGHT_FILE, 'rb') as infile:
                 # Give something else, and it fails:
                 with self.assertRaises(ValueError):
-                    main.diff_texts(l, r)
+                    main.diff_texts(infile, infile)
 
     def test_api_diff_trees(self):
         # diff_tree can take ElementEtrees

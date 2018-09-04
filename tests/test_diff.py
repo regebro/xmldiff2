@@ -835,10 +835,10 @@ class DiffTests(unittest.TestCase):
         here = os.path.split(__file__)[0]
         lfile = os.path.join(here, 'test_data', 'rmldoc.left.xml')
         rfile = os.path.join(here, 'test_data', 'rmldoc.right.xml')
-        with open(lfile, 'rt', encoding='utf8') as l:
-            left = l.read()
-        with open(rfile, 'rt', encoding='utf8') as r:
-            right = r.read()
+        with open(lfile, 'rt', encoding='utf8') as infile:
+            left = infile.read()
+        with open(rfile, 'rt', encoding='utf8') as infile:
+            right = infile.read()
 
         result = self._diff(left, right)
         self.assertEqual(
