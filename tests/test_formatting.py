@@ -1,12 +1,11 @@
 # -*- coding: UTF-8 -*-
 import os
-import types
 import unittest
 
 from lxml import etree
 from xmldiff import diff, formatting, main
 
-from .testing import generate_filebased_tests
+from .testing import generate_filebased_cases
 
 START = u'<document xmlns:diff="http://namespaces.shoobx.com/diff"><node'
 END = u'</node></document>'
@@ -392,8 +391,8 @@ class RMLFormatterFileTests(FormatterFileTests):
 
 # Add tests that use no placeholder replacement (ie plain XML)
 data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
-generate_filebased_tests(data_dir, XMLFormatterFileTests)
+generate_filebased_cases(data_dir, XMLFormatterFileTests)
 
 # Add tests that use placeholder replacement (ie RML)
 data_dir = os.path.join(os.path.dirname(__file__), 'test_data')
-generate_filebased_tests(data_dir, RMLFormatterFileTests, suffix='rml')
+generate_filebased_cases(data_dir, RMLFormatterFileTests, suffix='rml')

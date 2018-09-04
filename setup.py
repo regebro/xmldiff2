@@ -6,7 +6,7 @@ version = '2.0b2.dev0'
 with open('README.rst', 'rt', encoding='utf8') as readme:
     description = readme.read()
 
-with open('CHANGES.txt', 'rt', encoding='utf8') as changes:
+with open('CHANGES.rst', 'rt', encoding='utf8') as changes:
     history = changes.read()
 
 
@@ -38,9 +38,6 @@ setup(name='xmldiff',
           'setuptools',
           'lxml>=3.1.0',
           'six',
-      ],
-      tests_require=[
-          'coverage',
       ],
       test_suite='tests',
       entry_points={

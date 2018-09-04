@@ -12,6 +12,8 @@ Changes
 
 - A complete, bottom-up, pure-python rewrite
 
+- New easy API
+
 - New output formats:
 
   - A list of actions (similar but not compatible with the old format)
@@ -20,3 +22,5 @@ Changes
 
   - RML aware XML where tags containing text are semantically diffed, useful
     for human output such as converting to HTML or PDF
+
+- 100% test coverage

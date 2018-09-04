@@ -7,7 +7,7 @@ update-diff-match-patch:
 	wget $(dfm_source_3) -O $(root_dir)/xmldiff/_diff_match_patch_py3.py
 
 flake:
-	flake8 xmldiff --exclude *diff_match_patch*.py
+	flake8 tests xmldiff --exclude *diff_match_patch*.py
 
 coverage:
 	coverage run setup.py test

@@ -3,7 +3,7 @@ import os
 from io import open
 
 
-def make_test_function(left_filename):
+def make_case_function(left_filename):
     right_filename = left_filename.replace('.left.', '.right.')
     expected_filename = left_filename.replace('.left.', '.expected.')
 
@@ -23,7 +23,7 @@ def make_test_function(left_filename):
     return test
 
 
-def generate_filebased_tests(data_dir, test_class, suffix='xml', ignore=()):
+def generate_filebased_cases(data_dir, test_class, suffix='xml', ignore=()):
     for left_filename in os.listdir(data_dir):
         if not left_filename.endswith('.left.' + suffix):
             continue
@@ -31,7 +31,7 @@ def generate_filebased_tests(data_dir, test_class, suffix='xml', ignore=()):
             continue
 
         left_filename = os.path.join(data_dir, left_filename)
-        test_function = make_test_function(left_filename)
+        test_function = make_case_function(left_filename)
         function_name = os.path.split(left_filename)[-1].replace('.', '-')
         test_name = 'test_' + function_name
         setattr(test_class, test_name, test_function)
