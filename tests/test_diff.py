@@ -5,7 +5,7 @@ from io import open
 from lxml import etree
 from xmldiff import utils
 from xmldiff.diff import (Differ, UpdateTextIn, InsertNode, MoveNode,
-                          DeleteNode, UpdateAttrib, InsertAttrib, MoveAttrib,
+                          DeleteNode, UpdateAttrib, InsertAttrib, RenameAttrib,
                           DeleteAttrib, UpdateTextAfter)
 
 
@@ -651,7 +651,7 @@ class UpdateNodeTests(unittest.TestCase):
             result,
             [
                 UpdateAttrib('/root/node[1]', 'attr2', 'uhhuh'),
-                MoveAttrib('/root/node[1]', '/root/node[1]', 'attr1', 'attr4'),
+                RenameAttrib('/root/node[1]', 'attr1', 'attr4'),
                 InsertAttrib('/root/node[1]', 'attr5', 'new'),
                 DeleteAttrib('/root/node[1]', 'attr0'),
                 UpdateTextIn('/root/node[1]', 'The new text'),

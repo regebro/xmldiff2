@@ -8,21 +8,21 @@ from xmldiff import diff, formatting
 __version__ = pkg_resources.require("xmldiff")[0].version
 
 
-def diff_trees(left_tree, right_tree, F=0.5, uniqueattrs=None, formatter=None):
+def diff_trees(left, right, F=0.5, uniqueattrs=None, formatter=None):
     """Takes two lxml root elements or element trees"""
-    if isinstance(left_tree, etree._ElementTree):
-        left_tree = left_tree.getroot()
-    if isinstance(right_tree, etree._ElementTree):
-        right_tree = right_tree.getroot()
+    if isinstance(left, etree._ElementTree):
+        left = left.getroot()
+    if isinstance(right, etree._ElementTree):
+        right = right.getroot()
     if formatter is not None:
-        formatter.prepare(left_tree, right_tree)
+        formatter.prepare(left, right)
     differ = diff.Differ(F=F, uniqueattrs=uniqueattrs)
-    diffs = differ.diff(left_tree, right_tree)
+    diffs = differ.diff(left, right)
 
     if formatter is None:
         return list(diffs)
 
-    return formatter.format(diffs, left_tree)
+    return formatter.format(diffs, left)
 
 
 def diff_texts(left, right, F=0.5, uniqueattrs=None, formatter=None):

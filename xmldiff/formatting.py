@@ -374,7 +374,7 @@ class XMLFormatter(BaseFormatter):
         self._extend_diff_attr(node, 'add', name)
 
     def _handle_InsertAttrib(self, action, tree):
-        node = self._xpath(tree, action.target)
+        node = self._xpath(tree, action.node)
         self._insert_attrib(node, action.name, action.value)
 
     def _insert_node(self, target, node, position):
@@ -405,20 +405,12 @@ class XMLFormatter(BaseFormatter):
         del node.attrib[oldname]
         self._extend_diff_attr(node, 'rename', '%s:%s' % (oldname, newname))
 
-    def _handle_MoveAttrib(self, action, tree):
-        source = self._xpath(tree, action.source)
-        target = self._xpath(tree, action.target)
-        if source is target:
-            # This is a rename
-            self._rename_attrib(source, action.oldname, action.newname)
-        else:
-            # This is a move (can rename at the same time)
-            value = source.attrib[action.oldname]
-            self._delete_attrib(source, action.oldname)
-            self._insert_attrib(target, action.newname, value)
+    def _handle_RenameAttrib(self, action, tree):
+        node = self._xpath(tree, action.node)
+        self._rename_attrib(node, action.oldname, action.newname)
 
     def _handle_MoveNode(self, action, tree):
-        node = self._xpath(tree, action.source)
+        node = self._xpath(tree, action.node)
         inserted = deepcopy(node)
         target = self._xpath(tree, action.target)
         self._delete_node(node)
@@ -606,18 +598,17 @@ class DiffFormatter(BaseFormatter):
         return u"delete", action.node
 
     def _handle_InsertAttrib(self, action):
-        return (u"insert-attribute", action.target, action.name,
+        return (u"insert-attribute", action.node, action.name,
                 json.dumps(action.value))
 
     def _handle_InsertNode(self, action):
         return u"insert", action.target, action.tag, str(action.position)
 
-    def _handle_MoveAttrib(self, action):
-        return (u"move-attribute", action.source, action.target,
-                action.oldname, action.newname)
+    def _handle_RenameAttrib(self, action):
+        return (u"move-attribute", action.node, action.oldname, action.newname)
 
     def _handle_MoveNode(self, action):
-        return u"move", action.source, action.target, str(action.position)
+        return u"move", action.node, action.target, str(action.position)
 
     def _handle_UpdateAttrib(self, action):
         return (u"update-attribute", action.node, action.name,

@@ -10,15 +10,15 @@ from xmldiff import utils
 # Update, Move, Delete and Insert are the edit script actions:
 DeleteNode = namedtuple('DeleteNode', 'node')
 InsertNode = namedtuple('InsertNode', 'target tag position')
-MoveNode = namedtuple('MoveNode', 'source target position')
+MoveNode = namedtuple('MoveNode', 'node target position')
 
 UpdateTextIn = namedtuple('UpdateTextIn', 'node text')
 UpdateTextAfter = namedtuple('UpdateTextAfter', 'node text')
 
 UpdateAttrib = namedtuple('UpdateAttrib', 'node name value')
 DeleteAttrib = namedtuple('DeleteAttrib', 'node name')
-InsertAttrib = namedtuple('InsertAttrib', 'target name value')
-MoveAttrib = namedtuple('MoveAttrib', 'source target oldname newname')
+InsertAttrib = namedtuple('InsertAttrib', 'node name value')
+RenameAttrib = namedtuple('RenameAttrib', 'node oldname newname')
 
 
 class Differ(object):
@@ -223,7 +223,7 @@ class Differ(object):
             value = left.attrib[lk]
             if value in newattrmap:
                 rk = newattrmap[value]
-                yield MoveAttrib(left_xpath, right_xpath, lk, rk)
+                yield RenameAttrib(left_xpath, lk, rk)
                 # Remove from list of new attributes
                 new_keys.remove(rk)
                 # Update left node

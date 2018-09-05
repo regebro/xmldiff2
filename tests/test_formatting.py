@@ -200,20 +200,9 @@ class XMLFormatTests(unittest.TestCase):
         # The library currently only uses move attr for when attributes are
         # renamed:
         left = u'<document><node attr="val">Text</node></document>'
-        action = diff.MoveAttrib('/document/node', '/document/node',
-                                 'attr', 'bottr')
+        action = diff.RenameAttrib('/document/node', 'attr', 'bottr')
         expected = START + u' bottr="val" diff:rename-attr="attr:bottr"'\
             u'>Text' + END
-
-        self._format_test(left, action, expected)
-
-        # But it could conceivably be used to move attributes between nodes.
-        # So we test that as well:
-        left = u'<document><node attr="val"><b>Text</b></node></document>'
-        action = diff.MoveAttrib('/document/node', '/document/node/b',
-                                 'attr', 'attr')
-        expected = START + u' diff:delete-attr="attr"><b attr="val" '\
-            u'diff:add-attr="attr">Text</b>' + END
 
         self._format_test(left, action, expected)
 
@@ -309,21 +298,9 @@ class DiffFormatTests(unittest.TestCase):
         expected = '[insert, /document, node, 0]'
         self._format_test(action, expected)
 
-    def test_move_attr(self):
-        # The library currently only uses move attr for when attributes are
-        # renamed:
-        action = diff.MoveAttrib('/document/node', '/document/node',
-                                 'attr', 'bottr')
-        expected = '[move-attribute, /document/node, /document/node, '\
-            u'attr, bottr]'
-        self._format_test(action, expected)
-
-        # But it could conceivably be used to move attributes between nodes.
-        # So we test that as well:
-        action = diff.MoveAttrib('/document/node', '/document/node/b',
-                                 'attr', 'attr')
-        expected = '[move-attribute, /document/node, /document/node/b, '\
-            u'attr, attr]'
+    def test_rename_attr(self):
+        action = diff.RenameAttrib('/document/node', 'attr', 'bottr')
+        expected = '[move-attribute, /document/node, attr, bottr]'
         self._format_test(action, expected)
 
     def test_move_node(self):
