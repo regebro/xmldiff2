@@ -1,7 +1,11 @@
 """All major API points and command line tools"""
+import pkg_resources
+
 from argparse import ArgumentParser, FileType
 from lxml import etree
 from xmldiff import diff, formatting
+
+__version__ = pkg_resources.require("xmldiff")[0].version
 
 
 def diff_trees(left_tree, right_tree, F=0.5, uniqueattrs=None, formatter=None):
@@ -41,23 +45,29 @@ def diff_files(left, right, F=0.5, uniqueattrs=None, formatter=None):
                       formatter=formatter)
 
 
-def run(args=None):
-
-    parser = ArgumentParser(description='Diff two XML files')
+def make_parser():
+    parser = ArgumentParser(description='Create a diff for two XML files.')
     parser.add_argument('file1', type=FileType('r'),
-                        help='The first input file')
+                        help='the first input file')
     parser.add_argument('file2', type=FileType('r'),
-                        help='The second input file')
-    parser.add_argument('--formatter', default='diff',
+                        help='the second input file')
+    parser.add_argument('-f', '--formatter', default='diff',
                         choices=['diff', 'xml', 'rml'],
-                        help='Formatter choice. The diff and xml formatters '
-                        'are generic, rml may not makes sense with non-RML '
-                        'files. Default: diff')
-    parser.add_argument('--keep-whitespace', action='store_true',
-                        help="Do not strip ignorable whitespace")
-    parser.add_argument('--pretty-print', action='store_true',
-                        help="Try to make XML output more readable")
+                        help='formatter selection')
+    parser.add_argument('-w', '--keep-whitespace', action='store_true',
+                        help="do not strip ignorable whitespace")
+    parser.add_argument('-p', '--pretty-print', action='store_true',
+                        help="try to make XML output more readable")
+    parser.add_argument('-v', '--version', action='version',
+                        help='display version and exit.',
+                        version="xmldiff %s" % __version__)
+    return parser
+
+
+def run(args=None):
+    parser = make_parser()
     args = parser.parse_args(args=args)
+
     if args.keep_whitespace:
         normalize = formatting.WS_NONE
     else:

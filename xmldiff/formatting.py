@@ -576,7 +576,11 @@ class RMLFormatter(XMLFormatter):
 
 class DiffFormatter(BaseFormatter):
 
-    # Nothing to prepare or finalize, we could put in normalizing here maybe
+    def __init__(self, normalize=WS_TAGS, pretty_print=False):
+        self.normalize = normalize
+        # No pretty print support, nothing to be pretty about
+
+    # Nothing to prepare or finalize (one-liners for code coverage)
     def prepare(self, left, right): return
 
     def finalize(self, left, right): return

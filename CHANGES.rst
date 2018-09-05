@@ -4,7 +4,11 @@ Changes
 2.0b2 (unreleased)
 ------------------
 
-- Nothing changed yet.
+- Documentation
+
+- The diff formatter now handles the --keep-whitespace argument
+
+- Added a ``--version`` argument
 
 
 2.0b1 (2018-09-03)
